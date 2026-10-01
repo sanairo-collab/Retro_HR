@@ -1,766 +1,272 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>레트로 그랑프리 2D 경마 게임</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        .font-jua {
-            font-family: 'Jua', sans-serif;
-        }
-        /* Custom Scrollbar for Leaderboard */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1e293b;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 3px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>레트로 그랑프리 리얼리스틱 경마 게임</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800;900&display=swap" rel="stylesheet">
+<style>
+html,body{height:100%}
+body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:hidden;background:#030712;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+.font-jua{font-family:'Jua',sans-serif}
+.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{scrollbar-width:none}
+</style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+<body class="bg-slate-950 text-slate-100 w-screen flex flex-col justify-between p-1.5 sm:p-2.5">
+<header class="w-full bg-slate-900/95 border-b border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center justify-between gap-2 text-xs shrink-0 shadow-lg">
+ <div class="flex items-center gap-2 shrink-0"><span class="text-xl">🏇</span><h1 class="font-black text-amber-400 font-jua text-xs sm:text-sm whitespace-nowrap">리얼리스틱 그랑프리</h1></div>
+ <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+  <button id="soundToggleBtn" class="flex items-center bg-slate-800 text-amber-400 font-bold px-2 py-1 rounded-lg border border-slate-700 text-[11px] gap-1 whitespace-nowrap"><span id="soundIcon">🔊</span><span id="soundText" class="hidden sm:inline">사운드 ON</span></button>
+  <div class="flex items-center bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-700 text-[11px]"><label class="text-slate-300 font-bold mr-1.5 whitespace-nowrap">말 출전:</label>
+   <select id="horseCountSelect" class="bg-slate-950 text-amber-400 font-bold rounded px-1 border border-slate-700 text-[11px]">
+    <option value="2">2두</option><option value="3">3두</option><option value="4">4두</option><option value="5" selected>5두</option><option value="6">6두</option><option value="7">7두</option><option value="8">8두</option><option value="9">9두</option><option value="10">10두</option></select></div>
+  <div class="flex items-center bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-700 text-[11px] gap-1.5"><label class="text-slate-300 font-bold whitespace-nowrap">크기:</label>
+   <input type="range" id="horseScaleRange" min="50" max="140" value="85" class="w-14 sm:w-20 accent-amber-500"><span id="horseScaleVal" class="text-amber-400 font-extrabold w-7 text-right text-[10px]">85%</span></div>
+  <button id="resetBtn" class="bg-slate-800 text-slate-200 font-bold px-2.5 py-1 rounded-lg border border-slate-600 text-[11px] whitespace-nowrap">🔄 재설정</button>
+ </div>
+</header>
 
-    <!-- Mobile Portrait Orientation Notice Bar -->
-    <div id="portraitNotice" class="hidden sm:hidden bg-amber-500/90 text-slate-950 font-bold text-center py-1.5 px-3 text-xs flex items-center justify-center gap-2 z-50">
-        <span>📱 더 나은 시야를 위해 스마트폰을 가로로 회전해 보세요!</span>
+<main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-2 my-1.5 min-h-0 overflow-hidden">
+ <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1.5 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden min-h-0">
+  <div class="relative w-full flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-slate-950 rounded-lg">
+   <canvas id="raceCanvas" class="w-full h-full rounded-lg block"></canvas>
+   <div class="absolute top-2 right-2 z-20"><button id="startBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-4 py-2 rounded-xl shadow-xl active:scale-95 transition flex items-center gap-1.5 text-xs sm:text-sm font-jua border border-amber-200"><span>▶</span><span>경주 스타트!</span></button></div>
+   <div id="resultModal" class="absolute inset-0 bg-slate-950/85 hidden items-center justify-center p-2 z-30">
+    <div class="bg-slate-900 border-2 border-amber-500/80 rounded-2xl p-3 sm:p-4 max-w-xs sm:max-w-sm w-full text-center max-h-[95%] flex flex-col min-h-0">
+     <div class="text-2xl">🏆</div><h2 class="text-base sm:text-lg font-black text-amber-400 font-jua">시상식 및 최종 순위</h2>
+     <div id="podiumList" class="space-y-1 my-2 text-left text-[11px] sm:text-xs overflow-y-auto min-h-0 flex-1"></div>
+     <button id="modalRestartBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black py-2 rounded-xl font-jua text-xs sm:text-sm border border-amber-300">🔄 한 게임 더 하기!</button>
     </div>
-
-    <!-- Main Container -->
-    <main class="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 flex flex-col gap-3 justify-between">
-        
-        <!-- Header Controls & Title -->
-        <header class="w-full bg-slate-900 border-b-2 border-amber-500 p-2.5 sm:p-3.5 rounded-xl shadow-2xl flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-                <span class="text-2xl sm:text-3xl">🏇</span>
-                <div>
-                    <h1 class="text-base sm:text-xl font-extrabold text-amber-400 tracking-wide font-jua flex items-center gap-2">
-                        레트로 그랑프리 경마
-                        <span class="text-[10px] sm:text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">블랙 트랙 에디션</span>
-                    </h1>
-                </div>
-            </div>
-
-            <!-- Game Control Options -->
-            <div class="flex items-center gap-3 flex-wrap">
-                <!-- Horse Count Selector -->
-                <div class="flex items-center bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs sm:text-sm">
-                    <label for="horseCountSelect" class="text-slate-300 font-bold mr-2 whitespace-nowrap">출전 말 수:</label>
-                    <select id="horseCountSelect" class="bg-slate-900 text-amber-400 font-bold rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-amber-400 cursor-pointer">
-                        <option value="2">2 마리</option>
-                        <option value="3">3 마리</option>
-                        <option value="4">4 마리</option>
-                        <option value="5" selected>5 마리</option>
-                        <option value="6">6 마리</option>
-                        <option value="7">7 마리</option>
-                        <option value="8">8 마리</option>
-                        <option value="9">9 마리</option>
-                        <option value="10">10 마리</option>
-                    </select>
-                </div>
-
-                <!-- Horse Size Slider -->
-                <div class="flex items-center bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs sm:text-sm gap-2">
-                    <label for="horseScaleRange" class="text-slate-300 font-bold whitespace-nowrap">말 크기:</label>
-                    <input type="range" id="horseScaleRange" min="50" max="130" value="85" class="w-16 sm:w-24 accent-amber-500 cursor-pointer">
-                    <span id="horseScaleVal" class="text-amber-400 font-bold w-9 text-right">85%</span>
-                </div>
-
-                <!-- Action Buttons -->
-                <button id="startBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-2 rounded-lg shadow-lg hover:shadow-amber-500/20 active:scale-95 transition flex items-center gap-1.5 text-xs sm:text-sm">
-                    <span>▶</span>
-                    <span>경주 스타트</span>
-                </button>
-                <button id="resetBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-2 rounded-lg border border-slate-600 active:scale-95 transition text-xs sm:text-sm">
-                    🔄 재설정
-                </button>
-            </div>
-        </header>
-
-        <!-- Main Display Area: Canvas + Live Leaderboard -->
-        <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-3 items-stretch min-h-[300px]">
-            
-            <!-- Racetrack Canvas Container (3 Cols on Large Screen) -->
-            <div class="lg:col-span-3 bg-slate-900 rounded-xl p-2 shadow-2xl border-2 border-slate-800 flex flex-col justify-between relative overflow-hidden">
-                <div class="relative w-full flex-1 flex items-center justify-center min-h-[260px] sm:min-h-[340px]">
-                    <canvas id="raceCanvas" class="w-full h-full rounded-lg bg-slate-950 block"></canvas>
-                </div>
-                
-                <!-- Sub-bar Status Display -->
-                <div class="mt-2 bg-slate-950/80 px-3 py-2 rounded-lg border border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-300">
-                    <div id="gameStatusText" class="font-jua text-amber-300 flex items-center gap-2">
-                        <span>🏁 말 수와 크기를 선택한 후 [경주 스타트] 버튼을 누르세요!</span>
-                    </div>
-                    <div id="raceTimer" class="font-mono text-slate-400 font-bold">⏱️ 00.00초</div>
-                </div>
-            </div>
-
-            <!-- Live Leaderboard Panel (1 Col on Large Screen) -->
-            <div class="lg:col-span-1 bg-slate-900 rounded-xl p-3 shadow-2xl border-2 border-slate-800 flex flex-col">
-                <h2 class="text-sm sm:text-base font-extrabold text-amber-400 font-jua border-b border-slate-800 pb-2 mb-2 flex items-center justify-between">
-                    <span>📊 실시간 경기 순위</span>
-                    <span id="liveStatusBadge" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">대기 중</span>
-                </h2>
-                
-                <div id="leaderboardList" class="flex-1 space-y-1.5 overflow-y-auto max-h-[280px] lg:max-h-none pr-1">
-                    <!-- Populated dynamically via JS -->
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="w-full text-center text-[11px] text-slate-500 py-2 border-t border-slate-900">
-        HTML5 Canvas 2D 경마 게임 &copy; 2026. 검은색 트랙과 원근감 및 생생한 발놀림 연출!
-    </footer>
-
-    <!-- Victory / Results Modal -->
-    <div id="resultModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-slate-900 border-2 border-amber-500 rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl text-center transform transition-all scale-100">
-            <div class="text-4xl sm:text-5xl mb-2 animate-bounce">🏆</div>
-            <h2 class="text-xl sm:text-2xl font-black text-amber-400 font-jua mb-1">경주 종료! 시상식</h2>
-            <p class="text-xs sm:text-sm text-slate-400 mb-4">각 말을 이끈 기수들의 최종 도착 순위입니다.</p>
-
-            <div id="podiumList" class="space-y-2 mb-5 text-left text-xs sm:text-sm max-h-[220px] overflow-y-auto pr-1">
-                <!-- Winners filled via JS -->
-            </div>
-
-            <button id="modalRestartBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold py-2.5 rounded-xl shadow-lg transition active:scale-95 font-jua text-sm sm:text-base">
-                🔄 한 게임 더 하기!
-            </button>
-        </div>
-    </div>
-
-    <!-- JavaScript Logic Block -->
-    <script>
-        // --- 1. Distinct Jockey Colors Palette (10 Horses Max) ---
-        const JOCKEY_COLORS = [
-            { name: "빨강", hex: "#ef4444", border: "#b91c1c" },
-            { name: "파랑", hex: "#3b82f6", border: "#1d4ed8" },
-            { name: "노랑", hex: "#eab308", border: "#a16207" },
-            { name: "초록", hex: "#22c55e", border: "#15803d" },
-            { name: "보라", hex: "#a855f7", border: "#7e22ce" },
-            { name: "주황", hex: "#f97316", border: "#c2410c" },
-            { name: "분홍", hex: "#ec4899", border: "#be185d" },
-            { name: "민트", hex: "#14b8a6", border: "#0f766e" },
-            { name: "하늘", hex: "#38bdf8", border: "#0369a1" },
-            { name: "라임", hex: "#84cc16", border: "#4d7c0f" }
-        ];
-
-        // --- 2. DOM Elements ---
-        const canvas = document.getElementById('raceCanvas');
-        const ctx = canvas.getContext('2d');
-
-        const horseCountSelect = document.getElementById('horseCountSelect');
-        const horseScaleRange = document.getElementById('horseScaleRange');
-        const horseScaleVal = document.getElementById('horseScaleVal');
-        const startBtn = document.getElementById('startBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const leaderboardList = document.getElementById('leaderboardList');
-        const gameStatusText = document.getElementById('gameStatusText');
-        const raceTimer = document.getElementById('raceTimer');
-        const liveStatusBadge = document.getElementById('liveStatusBadge');
-        const resultModal = document.getElementById('resultModal');
-        const podiumList = document.getElementById('podiumList');
-        const modalRestartBtn = document.getElementById('modalRestartBtn');
-
-        // --- 3. Game State Variables ---
-        let numHorses = parseInt(horseCountSelect.value, 10);
-        let horseScale = parseInt(horseScaleRange.value, 10) / 100;
-        let horses = [];
-        let particles = [];
-        let isRacing = false;
-        let isFinished = false;
-        let raceStartTime = 0;
-        let elapsedTime = 0;
-        let finishOrder = [];
-        let animFrameId = null;
-
-        // Racetrack Margins
-        const TRACK_PADDING_LEFT = 65;
-        const TRACK_PADDING_RIGHT = 75;
-        let finishLineX = 0;
-
-        // --- 4. Helper Helper Function: Safe Rounded Rectangle ---
-        function drawRoundRect(context, x, y, width, height, radius) {
-            context.beginPath();
-            if (typeof context.roundRect === 'function') {
-                context.roundRect(x, y, width, height, radius);
-            } else {
-                context.rect(x, y, width, height);
-            }
-            context.fill();
-        }
-
-        // --- 5. Horse Class ---
-        class Horse {
-            constructor(id, jockeyColor) {
-                this.id = id; // 1 ~ 10
-                this.jockeyColor = jockeyColor;
-                this.x = TRACK_PADDING_LEFT;
-                this.y = 0;
-                this.speed = 0;
-                this.baseSpeed = 0.8; // Calibrated for ~15 sec race
-                this.legAngle = 0;
-                
-                // Penalty & Status properties
-                this.status = 'normal'; // 'normal', 'injured', 'tired'
-                this.statusTimer = 0; // ms remaining
-                this.rank = 0;
-                this.finished = false;
-                this.finishTime = 0;
-
-                // Organic speed variation timer
-                this.speedChangeTimer = Math.random() * 60;
-            }
-
-            reset(yPos) {
-                this.x = TRACK_PADDING_LEFT;
-                this.y = yPos;
-                this.speed = 0;
-                this.legAngle = 0;
-                this.status = 'normal';
-                this.statusTimer = 0;
-                this.rank = 0;
-                this.finished = false;
-                this.finishTime = 0;
-                this.speedChangeTimer = Math.random() * 60;
-            }
-
-            update(dt, trackWidth) {
-                if (this.finished) return;
-
-                // Handle penalties
-                if (this.statusTimer > 0) {
-                    this.statusTimer -= dt * 1000;
-                    if (this.statusTimer <= 0) {
-                        this.status = 'normal';
-                        this.statusTimer = 0;
-                    }
-                }
-
-                // Random Penalty Trigger (only during race)
-                if (isRacing && this.status === 'normal' && Math.random() < 0.0018) {
-                    if (Math.random() < 0.5) {
-                        // Trip/Injury -> Stop for 2 seconds (2000ms)
-                        this.status = 'injured';
-                        this.statusTimer = 2000;
-                        createStatusParticles(this.x, this.y, '#ef4444');
-                    } else {
-                        // Tired -> Slow down for 2 seconds (2000ms)
-                        this.status = 'tired';
-                        this.statusTimer = 2000;
-                        createStatusParticles(this.x, this.y, '#3b82f6');
-                    }
-                }
-
-                // Speed calculation
-                if (!isRacing) {
-                    this.speed = 0;
-                } else if (this.status === 'injured') {
-                    this.speed = 0;
-                } else {
-                    // Update organic speed periodically
-                    this.speedChangeTimer--;
-                    if (this.speedChangeTimer <= 0) {
-                        this.speedChangeTimer = 30 + Math.random() * 60;
-                        // Organic factor between 0.6x and 1.4x
-                        const factor = 0.6 + Math.random() * 0.8;
-                        this.baseSpeed = (0.7 + Math.random() * 0.3) * factor;
-                    }
-
-                    let currentMultiplier = 1.0;
-                    if (this.status === 'tired') {
-                        currentMultiplier = 0.35; // Significant slowdown
-                    }
-
-                    // Forward distance per frame
-                    this.speed = (this.baseSpeed * currentMultiplier) * (trackWidth / 800);
-                    this.x += this.speed;
-
-                    // Fast leg animation rate (high visual energy)
-                    this.legAngle += (0.28 + this.speed * 0.15);
-                }
-
-                // Check Finish Line
-                if (isRacing && this.x >= finishLineX && !this.finished) {
-                    this.finished = true;
-                    this.finishTime = elapsedTime;
-                    finishOrder.push(this);
-                    this.rank = finishOrder.length;
-                    
-                    // Create finish particles
-                    createStatusParticles(this.x, this.y, '#f59e0b', 20);
-                }
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.scale(horseScale, horseScale);
-
-                // 삐끗(부상) 상태 시 앞으로 넘어지는 듯 땅 쪽으로 앞부분 기울이기
-                if (this.status === 'injured') {
-                    ctx.rotate(0.38); // 시계 방향 회전으로 머리/코가 바닥으로 쏠림
-                    ctx.translate(2, 6); // 지면에 닿듯이 약간 아래로 이동
-                }
-
-                // --- 1. Shadow ---
-                ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-                ctx.beginPath();
-                ctx.ellipse(0, 13, 20, 4, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // 귀여운 짧은 다리를 위한 좌우 흔들림 계산
-                const swingA = Math.sin(this.legAngle) * 6;
-                const swingB = Math.sin(this.legAngle + Math.PI) * 6;
-
-                // --- 2. 귀여운 짧은 일자 다리 연출 ---
-                ctx.lineWidth = 4.5;
-                ctx.lineCap = "round";
-
-                // Far Back Leg (Darker Brown)
-                ctx.strokeStyle = "#451a03";
-                ctx.beginPath();
-                ctx.moveTo(-10, 4);
-                ctx.lineTo(-10 + swingB, 13);
-                ctx.stroke();
-
-                // Far Front Leg (Darker Brown)
-                ctx.beginPath();
-                ctx.moveTo(8, 4);
-                ctx.lineTo(8 + swingA, 13);
-                ctx.stroke();
-
-                // Near Back Leg (Light Brown)
-                ctx.strokeStyle = "#78350f";
-                ctx.beginPath();
-                ctx.moveTo(-6, 4);
-                ctx.lineTo(-6 + swingA, 13);
-                ctx.stroke();
-
-                // Near Front Leg (Light Brown)
-                ctx.beginPath();
-                ctx.moveTo(12, 4);
-                ctx.lineTo(12 + swingB, 13);
-                ctx.stroke();
-
-                // --- 3. Horse Body ---
-                // Main Body
-                ctx.fillStyle = "#78350f";
-                ctx.beginPath();
-                ctx.ellipse(0, 0, 20, 11, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Tail
-                ctx.strokeStyle = "#451a03";
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(-18, -4);
-                ctx.quadraticCurveTo(-26, -2 + Math.sin(this.legAngle) * 5, -28, 8);
-                ctx.stroke();
-
-                // Neck & Head
-                ctx.fillStyle = "#78350f";
-                ctx.beginPath();
-                ctx.moveTo(8, -4);
-                ctx.lineTo(18, -18);
-                ctx.lineTo(26, -16);
-                ctx.lineTo(24, -8);
-                ctx.lineTo(14, 2);
-                ctx.closePath();
-                ctx.fill();
-
-                // Head Snout
-                ctx.beginPath();
-                ctx.ellipse(23, -15, 6, 4, 0.2, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Ear
-                ctx.beginPath();
-                ctx.moveTo(17, -20);
-                ctx.lineTo(19, -24);
-                ctx.lineTo(20, -19);
-                ctx.fill();
-
-                // Mane (갈기)
-                ctx.strokeStyle = "#451a03";
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.moveTo(10, -7);
-                ctx.lineTo(18, -19);
-                ctx.stroke();
-
-                // Eye
-                ctx.fillStyle = "#000000";
-                ctx.beginPath();
-                ctx.arc(23, -17, 1.2, 0, Math.PI * 2);
-                ctx.fill();
-
-                // --- 4. Jockey (기수) ---
-                const riderOffsetY = Math.abs(Math.sin(this.legAngle)) * 2;
-
-                // Jockey Legs/Pants
-                ctx.fillStyle = "#f8fafc";
-                ctx.beginPath();
-                ctx.ellipse(-1, -6 - riderOffsetY, 6, 7, 0.3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Jockey Shirt (Unique Color)
-                ctx.fillStyle = this.jockeyColor.hex;
-                ctx.beginPath();
-                ctx.ellipse(1, -15 - riderOffsetY, 7, 9, 0.2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = this.jockeyColor.border;
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                // Jockey Head & Helmet
-                ctx.fillStyle = "#ffedd5"; // Skin
-                ctx.beginPath();
-                ctx.arc(6, -24 - riderOffsetY, 4, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Helmet/Cap
-                ctx.fillStyle = this.jockeyColor.hex;
-                ctx.beginPath();
-                ctx.arc(6, -26 - riderOffsetY, 5, Math.PI, Math.PI * 2);
-                ctx.fill();
-                ctx.fillRect(6, -26 - riderOffsetY, 5, 2);
-
-                // --- 5. Horse Number Badge on Saddle ---
-                ctx.fillStyle = "#ffffff";
-                ctx.beginPath();
-                ctx.arc(-2, 0, 7, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = "#000000";
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
-                ctx.fillStyle = "#000000";
-                ctx.font = "bold 9px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(this.id, -2, 0);
-
-                // --- 6. Status Bubbles / Effects ---
-                if (this.status === 'injured') {
-                    ctx.fillStyle = "#ef4444";
-                    drawRoundRect(ctx, -25, -52, 52, 18, 5);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 10px 'Jua', sans-serif";
-                    ctx.fillText("💥 삐끗! (2초)", 0, -43);
-                } else if (this.status === 'tired') {
-                    ctx.fillStyle = "#2563eb";
-                    drawRoundRect(ctx, -25, -52, 52, 18, 5);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 10px 'Jua', sans-serif";
-                    ctx.fillText("💦 지침 (2초)", 0, -43);
-                }
-
-                ctx.restore();
-            }
-        }
-
-        // --- 6. Localized Particle System ---
-        function createStatusParticles(x, y, color, count = 8) {
-            for (let i = 0; i < count; i++) {
-                particles.push({
-                    x: x + (Math.random() * 16 - 8),
-                    y: y + (Math.random() * 16 - 8),
-                    vx: (Math.random() - 0.5) * 2.5,
-                    vy: (Math.random() - 0.5) * 2.5 - 1.0,
-                    size: 2 + Math.random() * 3.5,
-                    color: color,
-                    alpha: 1.0,
-                    life: 0.03 + Math.random() * 0.03
-                });
-            }
-        }
-
-        function updateAndDrawParticles() {
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.alpha -= p.life;
-
-                if (p.alpha <= 0) {
-                    particles.splice(i, 1);
-                    continue;
-                }
-
-                ctx.save();
-                ctx.globalAlpha = p.alpha;
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
-        // --- 7. Canvas Sizing & Scene Setup ---
-        function resizeCanvas() {
-            const container = canvas.parentElement;
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            finishLineX = canvas.width - TRACK_PADDING_RIGHT;
-
-            // Reposition horses if needed
-            const trackHeaderHeight = 36;
-            const trackHeight = canvas.height - trackHeaderHeight;
-            const laneHeight = trackHeight / numHorses;
-
-            horses.forEach((horse, index) => {
-                const laneY = trackHeaderHeight + index * laneHeight + laneHeight / 2;
-                horse.y = laneY;
-            });
-
-            drawScene();
-        }
-
-        function initGame() {
-            numHorses = parseInt(horseCountSelect.value, 10);
-            horseScale = parseInt(horseScaleRange.value, 10) / 100;
-            horses = [];
-            particles = [];
-            finishOrder = [];
-            isRacing = false;
-            isFinished = false;
-            elapsedTime = 0;
-            raceTimer.textContent = "⏱️ 00.00초";
-            liveStatusBadge.textContent = "대기 중";
-            liveStatusBadge.className = "text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full";
-            gameStatusText.innerHTML = `<span>🏁 [경주 스타트] 버튼을 눌러 경주를 시작하세요!</span>`;
-
-            const trackHeaderHeight = 36;
-            const trackHeight = canvas.height - trackHeaderHeight;
-            const laneHeight = trackHeight / numHorses;
-
-            for (let i = 0; i < numHorses; i++) {
-                const laneY = trackHeaderHeight + i * laneHeight + laneHeight / 2;
-                const horse = new Horse(i + 1, JOCKEY_COLORS[i % JOCKEY_COLORS.length]);
-                horse.reset(laneY);
-                horses.push(horse);
-            }
-
-            updateLeaderboardUI();
-            drawScene();
-        }
-
-        // --- 8. Drawing Racetrack & Elements ---
-        function drawScene() {
-            // Dark Black Track Surface
-            ctx.fillStyle = "#09090b";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Track Header Banner
-            const trackHeaderHeight = 36;
-            ctx.fillStyle = "#18181b";
-            ctx.fillRect(0, 0, canvas.width, trackHeaderHeight);
-            
-            ctx.fillStyle = "#f59e0b";
-            ctx.font = "bold 13px 'Jua', sans-serif";
-            ctx.textAlign = "left";
-            ctx.textBaseline = "middle";
-            ctx.fillText("🏇 GRAND PRIX RACETRACK", 12, trackHeaderHeight / 2);
-
-            const trackHeight = canvas.height - trackHeaderHeight;
-            const laneHeight = trackHeight / numHorses;
-
-            // Draw Lanes & Lines
-            for (let i = 0; i < numHorses; i++) {
-                const laneY = trackHeaderHeight + i * laneHeight;
-
-                // Alternate Black Track Contrast Shades
-                ctx.fillStyle = (i % 2 === 0) ? "#0e0f12" : "#14151a";
-                ctx.fillRect(0, laneY, canvas.width, laneHeight);
-
-                // High Contrast Crisp White Lane Line
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([8, 6]);
-                ctx.beginPath();
-                ctx.moveTo(0, laneY);
-                ctx.lineTo(canvas.width, laneY);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // Lane Number Marker
-                ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-                ctx.fillRect(4, laneY + 3, 20, laneHeight - 6);
-                ctx.fillStyle = "#94a3b8";
-                ctx.font = "bold 11px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(`${i + 1}`, 14, laneY + laneHeight / 2);
-            }
-
-            // START LINE (Solid White)
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(TRACK_PADDING_LEFT, trackHeaderHeight);
-            ctx.lineTo(TRACK_PADDING_LEFT, canvas.height);
-            ctx.stroke();
-
-            // FINISH LINE (Checkered Flag Pattern)
-            const finishWidth = 18;
-            const checkSize = 6;
-            for (let y = trackHeaderHeight; y < canvas.height; y += checkSize) {
-                for (let x = 0; x < finishWidth; x += checkSize) {
-                    const isBlack = (Math.floor(x / checkSize) + Math.floor(y / checkSize)) % 2 === 0;
-                    ctx.fillStyle = isBlack ? "#000000" : "#ffffff";
-                    ctx.fillRect(finishLineX + x, y, checkSize, checkSize);
-                }
-            }
-
-            // Draw Horses & Particles
-            horses.forEach(horse => horse.draw(ctx));
-            updateAndDrawParticles();
-        }
-
-        // --- 9. Leaderboard & UI Updates ---
-        function updateLeaderboardUI() {
-            // Sort horses by position x descending
-            const sorted = [...horses].sort((a, b) => b.x - a.x);
-
-            leaderboardList.innerHTML = '';
-            sorted.forEach((horse, idx) => {
-                const rankText = idx === 0 ? "1위 🥇" : idx === 1 ? "2위 🥈" : idx === 2 ? "3위 🥉" : `${idx + 1}위`;
-                const isFinishedBadge = horse.finished ? `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">완주</span>` : '';
-                
-                let statusBadge = '';
-                if (horse.status === 'injured') {
-                    statusBadge = `<span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded animate-pulse">💥 삐끗</span>`;
-                } else if (horse.status === 'tired') {
-                    statusBadge = `<span class="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded animate-pulse">💦 지침</span>`;
-                }
-
-                const item = document.createElement('div');
-                item.className = "flex items-center justify-between p-2 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs";
-                item.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="font-black text-amber-400 w-8">${rankText}</span>
-                        <span class="w-3.5 h-3.5 rounded-full inline-block border border-slate-400" style="background-color: ${horse.jockeyColor.hex}"></span>
-                        <span class="font-bold text-slate-200">${horse.id}번 말 (${horse.jockeyColor.name})</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        ${statusBadge}
-                        ${isFinishedBadge}
-                    </div>
-                `;
-                leaderboardList.appendChild(item);
-            });
-        }
-
-        // --- 10. Main Game Loop ---
-        let lastTime = 0;
-        function gameLoop(timestamp) {
-            if (!lastTime) lastTime = timestamp;
-            const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
-            lastTime = timestamp;
-
-            if (isRacing) {
-                elapsedTime = (timestamp - raceStartTime) / 1000;
-                raceTimer.textContent = `⏱️ ${elapsedTime.toFixed(2)}초`;
-
-                // Update horse positions
-                horses.forEach(horse => horse.update(dt, canvas.width - TRACK_PADDING_LEFT - TRACK_PADDING_RIGHT));
-
-                // Check if all horses finished
-                if (finishOrder.length === horses.length) {
-                    isRacing = false;
-                    isFinished = true;
-                    showVictoryModal();
-                }
-
-                updateLeaderboardUI();
-            }
-
-            drawScene();
-            animFrameId = requestAnimationFrame(gameLoop);
-        }
-
-        // --- 11. Victory Modal ---
-        function showVictoryModal() {
-            liveStatusBadge.textContent = "경기 종료";
-            liveStatusBadge.className = "text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold";
-            gameStatusText.innerHTML = `<span class="text-emerald-400 font-bold">🏆 모든 말이 완주했습니다! 축하합니다!</span>`;
-
-            podiumList.innerHTML = '';
-            finishOrder.forEach((horse, idx) => {
-                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "🏁";
-                const row = document.createElement('div');
-                row.className = "flex items-center justify-between p-2.5 rounded-xl bg-slate-800 border border-slate-700";
-                row.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="text-base">${medal}</span>
-                        <span class="font-bold text-amber-400">${idx + 1}위:</span>
-                        <span class="w-3.5 h-3.5 rounded-full inline-block" style="background-color: ${horse.jockeyColor.hex}"></span>
-                        <span class="font-bold text-slate-100">${horse.id}번 말 (${horse.jockeyColor.name} 기수)</span>
-                    </div>
-                    <span class="font-mono text-slate-300 font-bold">${horse.finishTime.toFixed(2)}초</span>
-                `;
-                podiumList.appendChild(row);
-            });
-
-            resultModal.classList.remove('hidden');
-        }
-
-        // --- 12. Event Listeners & Controls ---
-        startBtn.addEventListener('click', () => {
-            if (isRacing) return;
-            initGame();
-            isRacing = true;
-            raceStartTime = performance.now();
-            liveStatusBadge.textContent = "레이스 중";
-            liveStatusBadge.className = "text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold animate-pulse";
-            gameStatusText.innerHTML = `<span class="text-amber-300 font-bold animate-pulse">⚡ 레이스 진행 중! 선두를 차지하라!</span>`;
-        });
-
-        resetBtn.addEventListener('click', () => {
-            initGame();
-        });
-
-        horseCountSelect.addEventListener('change', () => {
-            initGame();
-        });
-
-        horseScaleRange.addEventListener('input', (e) => {
-            horseScale = parseInt(e.target.value, 10) / 100;
-            horseScaleVal.textContent = `${e.target.value}%`;
-            drawScene();
-        });
-
-        modalRestartBtn.addEventListener('click', () => {
-            resultModal.classList.add('hidden');
-            initGame();
-        });
-
-        window.addEventListener('resize', resizeCanvas);
-
-        // --- 13. Initialization ---
-        window.onload = () => {
-            resizeCanvas();
-            initGame();
-            requestAnimationFrame(gameLoop);
-        };
-    </script>
+   </div>
+  </div>
+  <div class="mt-1 bg-slate-950/95 px-3 py-1 rounded-lg border border-slate-800 flex items-center justify-between text-[11px] sm:text-xs shrink-0">
+   <div id="gameStatusText" class="font-jua text-amber-300 truncate">🚩 [경주 스타트] 버튼을 누르면 경주가 시작됩니다!</div>
+   <div id="raceTimer" class="font-mono text-amber-400 font-extrabold whitespace-nowrap ml-2 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">⏱️ 00.00초</div>
+  </div>
+ </div>
+ <div class="hidden sm:flex lg:col-span-1 bg-slate-900 rounded-xl p-2.5 border border-slate-800/80 flex-col min-h-0 overflow-hidden">
+  <h2 class="text-xs sm:text-sm font-extrabold text-amber-400 font-jua border-b border-slate-800 pb-1.5 mb-2 flex items-center justify-between shrink-0"><span>📊 실시간 라이브 순위</span><span id="liveStatusBadge" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">대기 중</span></h2>
+  <div id="leaderboardList" class="flex-1 space-y-1.5 overflow-y-auto min-h-0"></div>
+ </div>
+</main>
+
+<script>
+const COLORS=[
+{name:"레드 썬더",hex:"#ef4444",coat:"#6b3319",dark:"#3a1a0b",mane:"#1f0e06",blaze:0},
+{name:"블루 스톰",hex:"#3b82f6",coat:"#9a5328",dark:"#5e3015",mane:"#2a140a",blaze:1},
+{name:"골든 차크라",hex:"#f59e0b",coat:"#2b1b17",dark:"#120a08",mane:"#0b0605",blaze:0},
+{name:"에메랄드 윈드",hex:"#10b981",coat:"#b56d3c",dark:"#744120",mane:"#e8dcc8",blaze:1},
+{name:"퍼플 갤럭시",hex:"#a855f7",coat:"#522e1b",dark:"#2c180d",mane:"#150a05",blaze:0},
+{name:"오렌지 블레이즈",hex:"#f97316",coat:"#8a4a24",dark:"#512a14",mane:"#33170a",blaze:1},
+{name:"핑크 메테오",hex:"#ec4899",coat:"#d8dce2",dark:"#9aa3b0",mane:"#5b6577",blaze:0},
+{name:"시안 라이트닝",hex:"#06b6d4",coat:"#5d341e",dark:"#331b0f",mane:"#1a0d06",blaze:1},
+{name:"라임 스프린트",hex:"#84cc16",coat:"#a8693a",dark:"#6a3e20",mane:"#2c1509",blaze:0},
+{name:"크림슨 발키리",hex:"#e11d48",coat:"#3d2214",dark:"#1f110a",mane:"#120804",blaze:1}];
+const $=id=>document.getElementById(id);
+const canvas=$('raceCanvas'),ctx=canvas.getContext('2d');
+const horseCountSelect=$('horseCountSelect'),horseScaleRange=$('horseScaleRange'),startBtn=$('startBtn'),leaderboardList=$('leaderboardList'),gameStatusText=$('gameStatusText'),raceTimer=$('raceTimer'),liveStatusBadge=$('liveStatusBadge'),resultModal=$('resultModal'),podiumList=$('podiumList');
+
+// Audio
+let soundEnabled=true,audioCtx=null;
+function initAudio(){if(!audioCtx){const A=window.AudioContext||window.webkitAudioContext;if(A)audioCtx=new A()}if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume()}
+function playHoof(){if(!soundEnabled||!audioCtx)return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.setValueAtTime(80+Math.random()*40,t);o.frequency.exponentialRampToValueAtTime(20,t+.05);g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.001,t+.05);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(t+.05)}catch(e){}}
+function playFanfare(){if(!soundEnabled||!audioCtx)return;try{[523.25,659.25,783.99,1046.5].forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),s=audioCtx.currentTime+i*.12;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.1,s);g.gain.exponentialRampToValueAtTime(.001,s+.35);o.connect(g);g.connect(audioCtx.destination);o.start(s);o.stop(s+.35)})}catch(e){}}
+$('soundToggleBtn').addEventListener('click',()=>{soundEnabled=!soundEnabled;$('soundIcon').textContent=soundEnabled?'🔊':'🔇';$('soundText').textContent=soundEnabled?'사운드 ON':'사운드 OFF';if(soundEnabled)initAudio()});
+
+let wakeLock=null;
+async function reqWake(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
+function relWake(){if(wakeLock){wakeLock.release().then(()=>wakeLock=null).catch(()=>{})}}
+
+// State
+let numHorses=5,horseScale=.85,horses=[],particles=[],isRacing=false,isFinished=false,raceStartTime=0,elapsedTime=0,finishOrder=[];
+const PAD_L=60,PAD_R=75;let finishLineX=0;
+
+function dust(x,y,color='#64748b',n=4){if(particles.length>40)return;for(let i=0;i<n;i++)particles.push({x:x+(Math.random()-.5)*10,y:y+(Math.random()-.5)*6,vx:-.5-Math.random()*1.5,vy:-.2-Math.random()*.8,r:1.5+Math.random()*2.5,a:.6+Math.random()*.4,c:color})}
+function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.a-=dt*1.2;p.r+=dt*1.5;if(p.a<=0){particles.splice(i,1);continue}ctx.save();ctx.globalAlpha=p.a;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();ctx.restore()}}
+
+// Realistic leg: two-segment articulated limb (hip -> knee/hock -> fetlock -> hoof)
+function leg(c,hx,hy,p,front,col,w){
+ const sw=Math.sin(p),lift=Math.max(0,Math.cos(p));
+ const a1=sw*(front?.8:.7);
+ const a2=front?a1-.15-lift*1.25:a1+.35-lift*.9;
+ const L1=front?14.5:10.5,L2=front?14:12;
+ const kx=hx+Math.sin(a1)*L1,ky=hy+Math.cos(a1)*L1;
+ const a3=front?a2+.25*lift:a2-.45;
+ const fx=kx+Math.sin(a2)*L2,fy=ky+Math.cos(a2)*L2;
+ const hfx=fx+Math.sin(a3)*3.5,hfy=fy+Math.cos(a3)*3.5;
+ c.lineCap='round';c.lineJoin='round';c.strokeStyle=col;
+ c.lineWidth=w;c.beginPath();c.moveTo(hx,hy);c.lineTo(kx,ky);c.stroke();
+ c.lineWidth=w*.62;c.beginPath();c.moveTo(kx,ky);c.lineTo(fx,fy);c.stroke();
+ c.lineWidth=w*.5;c.strokeStyle="#161010";c.beginPath();c.moveTo(fx,fy);c.lineTo(hfx,hfy);c.stroke();
+}
+
+class Horse{
+ constructor(id,col){this.id=id;this.col=col;this.reset(0)}
+ reset(y){this.x=PAD_L;this.y=y;this.speed=0;this.baseSpeed=.85;this.phase=Math.random()*6.28;this.status='normal';this.timer=0;this.rank=0;this.finished=false;this.finishTime=0;this.chg=Math.random()*40}
+ update(dt,tw){
+  if(this.finished)return;
+  if(this.timer>0){this.timer-=dt*1000;if(this.timer<=0){this.status='normal';this.timer=0}}
+  if(isRacing&&this.status==='normal'&&Math.random()<.0015){const inj=Math.random()<.5;this.status=inj?'injured':'tired';this.timer=2000;dust(this.x,this.y,inj?'#ef4444':'#3b82f6',8)}
+  if(!isRacing||this.status==='injured'){this.speed=0}
+  else{
+   if(--this.chg<=0){this.chg=25+Math.random()*50;this.baseSpeed=(.75+Math.random()*.35)*(.65+Math.random()*.75)}
+   this.speed=this.baseSpeed*(this.status==='tired'?.32:1)*(tw/750);this.x+=this.speed;
+   const pp=this.phase;this.phase+=(.8+this.speed*.8)*10*dt;
+   if(Math.floor(pp/Math.PI)!==Math.floor(this.phase/Math.PI)){if(Math.random()<.25)playHoof();dust(this.x-14,this.y+14,'#475569',2)}
+  }
+  if(isRacing&&this.x>=finishLineX&&!this.finished){this.finished=true;this.finishTime=elapsedTime;finishOrder.push(this);this.rank=finishOrder.length;dust(this.x,this.y,'#f59e0b',12)}
+ }
+ draw(c){
+  const k=this.col,p=this.phase,moving=this.speed>0&&this.status!=='injured';
+  const bob=moving?Math.sin(p*2)*.9:0;
+  c.save();c.translate(this.x,this.y);c.scale(horseScale,horseScale);
+  if(this.status==='injured'){c.rotate(.12);c.translate(0,3)}
+  if(moving)c.rotate(Math.sin(p)*.018);
+  // ground shadow
+  c.fillStyle="rgba(255,255,255,.1)";c.beginPath();c.ellipse(0,15,34,4.5,0,0,6.283);c.fill();
+  const b=bob;
+  // far legs (darker)
+  const far=k.dark;
+  leg(c,-17,-11+b,p+Math.PI+.9,false,far,6);
+  leg(c,15,-11+b,p-.9,true,far,4.6);
+  // tail (flowing)
+  c.strokeStyle=k.mane;c.lineCap='round';
+  for(let i=0;i<4;i++){c.lineWidth=3.2-i*.5;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-34,-24+i*2,-42+Math.sin(p+i)*3,-18+i*3,-50+Math.sin(p*1.5+i*.6)*4,-6+i*4+Math.cos(p+i)*3);c.stroke()}
+  // body
+  const g=c.createLinearGradient(0,-29,0,-4);g.addColorStop(0,k.coat);g.addColorStop(1,k.dark);
+  c.fillStyle=g;c.beginPath();
+  c.moveTo(-27,-16+b);
+  c.bezierCurveTo(-28,-27+b,-13,-28+b,-3,-25+b);
+  c.bezierCurveTo(5,-24+b,13,-27+b,20,-27+b);
+  c.bezierCurveTo(28,-25+b,29,-14+b,23,-6+b);
+  c.bezierCurveTo(14,-2+b,0,-5+b,-8,-6+b);
+  c.bezierCurveTo(-20,-3+b,-28,-7+b,-27,-16+b);
+  c.fill();
+  // haunch & shoulder muscle shading
+  c.fillStyle="rgba(0,0,0,.18)";c.beginPath();c.ellipse(-16,-14+b,9,8,-.3,0,6.283);c.fill();
+  c.beginPath();c.ellipse(14,-15+b,6,8,.2,0,6.283);c.fill();
+  c.fillStyle="rgba(255,255,255,.1)";c.beginPath();c.ellipse(-2,-23+b,14,2.4,0,0,6.283);c.fill();
+  // neck
+  c.fillStyle=g;c.beginPath();
+  c.moveTo(13,-26+b);c.bezierCurveTo(19,-35+b,23,-41+b,29,-45+b);
+  c.lineTo(35,-38+b);c.bezierCurveTo(31,-30+b,30,-20+b,25,-10+b);c.closePath();c.fill();
+  // head
+  c.fillStyle=k.coat;c.beginPath();
+  c.moveTo(28,-45+b);c.bezierCurveTo(36,-46+b,42,-41+b,49,-33+b);
+  c.bezierCurveTo(51,-30+b,49,-28+b,46,-28.5+b);
+  c.bezierCurveTo(42,-30+b,38,-31+b,35,-36+b);
+  c.bezierCurveTo(33,-40+b,30,-40+b,28,-45+b);c.fill();
+  if(k.blaze){c.strokeStyle="rgba(255,255,255,.75)";c.lineWidth=1.4;c.beginPath();c.moveTo(34,-44.5+b);c.lineTo(47,-33.5+b);c.stroke()}
+  // muzzle darker
+  c.fillStyle=k.dark;c.beginPath();c.ellipse(47.5,-31+b,2.8,2.2,.6,0,6.283);c.fill();
+  c.fillStyle="#000";c.beginPath();c.arc(48.2,-32+b,.7,0,6.283);c.fill();
+  // eye
+  c.fillStyle="#0b0b0b";c.beginPath();c.ellipse(37,-40.5+b,1.5,1.1,.3,0,6.283);c.fill();
+  c.fillStyle="#fff";c.fillRect(37.4,-41.2+b,.6,.6);
+  // ears
+  c.fillStyle=k.coat;c.beginPath();c.moveTo(29,-44+b);c.lineTo(29.5,-51+b);c.lineTo(33,-45.5+b);c.fill();
+  // bridle
+  c.strokeStyle="#2a1a10";c.lineWidth=1;c.beginPath();c.moveTo(44.5,-33.5+b);c.lineTo(46,-30+b);c.moveTo(36,-40+b);c.lineTo(41,-32.5+b);c.moveTo(34,-41+b);c.lineTo(38,-34+b);c.stroke();
+  // mane
+  c.strokeStyle=k.mane;c.lineWidth=2.4;
+  for(let i=0;i<8;i++){const t=i/7,x=15+t*14,y=-28-t*17+b;c.beginPath();c.moveTo(x,y);c.lineTo(x-6-Math.sin(p*2+i)*1.8,y+3+Math.cos(p*2+i)*1)
+   ;c.stroke()}
+  // saddle cloth
+  c.fillStyle=k.hex;c.beginPath();c.roundRect(-12,-27+b,13,10,2);c.fill();
+  c.fillStyle="#fff";c.font="bold 8px sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText(this.id,-5.5,-22+b);
+  // near legs
+  leg(c,-19,-11+b,p+Math.PI+.3,false,k.coat,7);
+  leg(c,17,-11+b,p-.2,true,k.coat,5.2);
+  // fetlock white socks
+  // jockey (crouched racing posture)
+  const jb=b*.5;
+  c.lineCap='round';c.lineJoin='round';
+  c.strokeStyle="#f8fafc";c.lineWidth=3.5;c.beginPath();c.moveTo(-4,-29+jb);c.lineTo(5,-23+jb);c.lineTo(3,-15+jb);c.stroke(); // breeches
+  c.strokeStyle="#111";c.lineWidth=3;c.beginPath();c.moveTo(5,-23+jb);c.lineTo(4,-14+jb);c.stroke(); // boot
+  c.strokeStyle=k.hex;c.lineWidth=8;c.beginPath();c.moveTo(-5,-30+jb);c.quadraticCurveTo(2,-37+jb,10,-39+jb);c.stroke(); // torso
+  c.strokeStyle=k.hex;c.lineWidth=3;c.beginPath();c.moveTo(10,-38+jb);c.lineTo(17,-34+jb);c.lineTo(25,-34+jb+Math.sin(p*2)*.5);c.stroke(); // arm
+  c.fillStyle="#f1c9a5";c.beginPath();c.arc(14,-43+jb,3,0,6.283);c.fill(); // face
+  c.fillStyle=k.hex;c.beginPath();c.arc(13.5,-44.2+jb,3.7,3.14,6.283);c.fill();c.fillRect(9.8,-44.4+jb,7.4,1.4); // helmet
+  c.fillStyle="#fbbf24";c.fillRect(15,-43+jb,3,1.6); // goggles
+  // reins
+  c.strokeStyle="#fbbf24";c.lineWidth=1;c.beginPath();c.moveTo(25,-34+jb);c.quadraticCurveTo(36,-31,45.5,-30.5+b);c.stroke();
+  c.restore();
+ }
+}
+
+function createHorses(){horses=[];for(let i=0;i<numHorses;i++)horses.push(new Horse(i+1,COLORS[i%COLORS.length]))}
+function resizeCanvas(){
+ const c=canvas.parentElement;canvas.width=c.clientWidth;canvas.height=c.clientHeight;finishLineX=canvas.width-PAD_R;
+ const lh=canvas.height/(numHorses+1);
+ horses.forEach((h,i)=>{const y=lh*(i+1);if(!isRacing)h.reset(y);else h.y=y});
+}
+window.addEventListener('resize',resizeCanvas);
+
+function drawTrack(){
+ ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);
+ const top=12,bot=canvas.height-12;
+ ctx.fillStyle="#090d16";ctx.fillRect(0,top,canvas.width,bot-top);
+ const lh=canvas.height/(numHorses+1);
+ ctx.strokeStyle="rgba(251,191,36,.25)";ctx.lineWidth=1.5;ctx.setLineDash([8,8]);
+ for(let i=1;i<=numHorses;i++){const y=lh*i+lh/2;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke()}
+ ctx.setLineDash([]);
+ ctx.strokeStyle="#fff";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(PAD_L,top);ctx.lineTo(PAD_L,bot);ctx.stroke();
+ const fx=finishLineX,s=6;
+ for(let y=top;y<bot;y+=s*2){ctx.fillStyle="#fff";ctx.fillRect(fx-s,y,s,s);ctx.fillRect(fx,y+s,s,s);ctx.fillStyle="#000";ctx.fillRect(fx,y,s,s);ctx.fillRect(fx-s,y+s,s,s)}
+}
+
+function updateLeaderboard(){
+ const sorted=[...horses].sort((a,b)=>b.x-a.x);leaderboardList.innerHTML='';
+ sorted.forEach((h,i)=>{
+  const st=h.finished?`<span class="text-amber-400 font-extrabold">${h.rank}위 (완주)</span>`:h.status==='injured'?`<span class="text-red-400 font-bold">⚠️ 부상</span>`:h.status==='tired'?`<span class="text-blue-400 font-bold">💦 지침</span>`:`<span class="text-slate-400">${i+1}위</span>`;
+  const d=document.createElement('div');d.className="flex items-center justify-between bg-slate-950/80 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs";
+  d.innerHTML=`<div class="flex items-center gap-2 truncate"><span class="w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center text-slate-950" style="background:${h.col.hex}">${h.id}</span><span class="font-bold text-slate-200 truncate">${h.col.name}</span></div><div class="text-[11px] whitespace-nowrap ml-1">${st}</div>`;
+  leaderboardList.appendChild(d)});
+}
+function showResult(){
+ podiumList.innerHTML='';
+ finishOrder.forEach((h,i)=>{const m=['🥇','🥈','🥉'][i]||'🎗️';const r=document.createElement('div');
+  r.className=`flex items-center justify-between p-2 rounded-xl border ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-300 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'}`;
+  r.innerHTML=`<div class="flex items-center gap-2 truncate"><span class="text-base">${m}</span><span class="w-5 h-5 rounded-full text-[11px] font-black flex items-center justify-center text-slate-950" style="background:${h.col.hex}">${h.id}</span><span class="truncate">${h.col.name}</span></div><span class="font-mono text-amber-400 font-bold">${h.finishTime.toFixed(2)}초</span>`;
+  podiumList.appendChild(r)});
+ resultModal.classList.remove('hidden');resultModal.classList.add('flex');
+}
+function startRace(){
+ if(isRacing)return;initAudio();reqWake();
+ isRacing=true;isFinished=false;finishOrder=[];raceStartTime=performance.now();elapsedTime=0;
+ startBtn.classList.add('hidden');resultModal.classList.add('hidden');resultModal.classList.remove('flex');
+ liveStatusBadge.textContent="경주 진행 중";liveStatusBadge.className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse";
+ gameStatusText.textContent="🔥 박진감 넘치는 경주가 진행 중입니다!";
+}
+function resetGame(){
+ relWake();isRacing=false;isFinished=false;elapsedTime=0;finishOrder=[];particles=[];
+ raceTimer.textContent="⏱️ 00.00초";liveStatusBadge.textContent="대기 중";liveStatusBadge.className="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full";
+ gameStatusText.textContent="🚩 [경주 스타트] 버튼을 누르면 경주가 시작됩니다!";
+ startBtn.classList.remove('hidden');resultModal.classList.add('hidden');resultModal.classList.remove('flex');
+ resizeCanvas();updateLeaderboard();
+}
+
+let last=performance.now();
+function animate(now){
+ const dt=Math.min((now-last)/1000,.08);last=now;
+ if(isRacing&&!isFinished){
+  elapsedTime=(now-raceStartTime)/1000;raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;
+  if(finishOrder.length===horses.length){isFinished=true;isRacing=false;relWake();playFanfare();
+   liveStatusBadge.textContent="경기 종료";liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
+   gameStatusText.innerHTML=`🏆 경주 종료! 우승마: <b class="text-amber-400">${finishOrder[0].col.name}</b>`;setTimeout(showResult,400)}
+ }
+ ctx.clearRect(0,0,canvas.width,canvas.height);drawTrack();drawParticles(dt);
+ [...horses].sort((a,b)=>a.y-b.y).forEach(h=>{h.update(dt,canvas.width);h.draw(ctx)});
+ if(isRacing||particles.length)updateLeaderboard();
+ requestAnimationFrame(animate);
+}
+startBtn.addEventListener('click',startRace);
+$('resetBtn').addEventListener('click',resetGame);
+$('modalRestartBtn').addEventListener('click',resetGame);
+horseCountSelect.addEventListener('change',e=>{numHorses=parseInt(e.target.value,10);createHorses();resetGame()});
+horseScaleRange.addEventListener('input',e=>{const v=parseInt(e.target.value,10);horseScale=v/100;$('horseScaleVal').textContent=v+'%'});
+window.addEventListener('load',()=>{createHorses();resizeCanvas();updateLeaderboard();requestAnimationFrame(animate)});
+</script>
 </body>
 </html>
