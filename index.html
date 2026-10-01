@@ -13,41 +13,41 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
 .no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{scrollbar-width:none}
 </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen w-screen flex flex-col justify-between p-2 sm:p-3">
-<header class="w-full bg-slate-900/95 border-b border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center justify-between gap-2 text-xs shrink-0 shadow-lg">
- <div class="flex items-center gap-2 shrink-0"><span class="text-xl">🏇</span><h1 class="font-black text-amber-400 font-jua text-xs sm:text-sm whitespace-nowrap">리얼리스틱 그랑프리</h1></div>
- <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
-  <button id="soundToggleBtn" class="flex items-center bg-slate-800 text-amber-400 font-bold px-2 py-1 rounded-lg border border-slate-700 text-[11px] gap-1 whitespace-nowrap"><span id="soundIcon">🔊</span><span id="soundText" class="hidden sm:inline">사운드 ON</span></button>
-  <div class="flex items-center bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-700 text-[11px]"><label class="text-slate-300 font-bold mr-1.5 whitespace-nowrap">말 출전:</label>
+<body class="bg-slate-950 text-slate-100 min-h-screen w-screen flex flex-col justify-between p-1.5 sm:p-2">
+<header class="w-full bg-slate-900/95 border-b border-amber-500/40 px-3 py-1 rounded-xl flex items-center justify-between gap-2 text-xs shrink-0 shadow-lg">
+ <div class="flex items-center gap-1.5 shrink-0"><span class="text-lg">🏇</span><h1 class="font-black text-amber-400 font-jua text-xs sm:text-sm whitespace-nowrap">리얼리스틱 그랑프리</h1></div>
+ <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+  <button id="soundToggleBtn" class="flex items-center bg-slate-800 text-amber-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 text-[11px] gap-1 whitespace-nowrap"><span id="soundIcon">🔊</span><span id="soundText" class="hidden sm:inline">사운드 ON</span></button>
+  <div class="flex items-center bg-slate-800/90 px-2 py-0.5 rounded-lg border border-slate-700 text-[11px]"><label class="text-slate-300 font-bold mr-1 whitespace-nowrap">말 출전:</label>
    <select id="horseCountSelect" class="bg-slate-950 text-amber-400 font-bold rounded px-1 border border-slate-700 text-[11px]">
     <option value="2">2두</option><option value="3">3두</option><option value="4">4두</option><option value="5" selected>5두</option><option value="6">6두</option><option value="7">7두</option><option value="8">8두</option><option value="9">9두</option><option value="10">10두</option></select></div>
-  <div class="flex items-center bg-slate-800/90 px-2 py-1 rounded-lg border border-slate-700 text-[11px] gap-1.5"><label class="text-slate-300 font-bold whitespace-nowrap">크기:</label>
-   <input type="range" id="horseScaleRange" min="50" max="140" value="85" class="w-14 sm:w-20 accent-amber-500"><span id="horseScaleVal" class="text-amber-400 font-extrabold w-7 text-right text-[10px]">85%</span></div>
-  <button id="resetBtn" class="bg-slate-800 text-slate-200 font-bold px-2.5 py-1 rounded-lg border border-slate-600 text-[11px] whitespace-nowrap">🔄 재설정</button>
+  <div class="flex items-center bg-slate-800/90 px-2 py-0.5 rounded-lg border border-slate-700 text-[11px] gap-1"><label class="text-slate-300 font-bold whitespace-nowrap">크기:</label>
+   <input type="range" id="horseScaleRange" min="50" max="140" value="85" class="w-12 sm:w-16 accent-amber-500"><span id="horseScaleVal" class="text-amber-400 font-extrabold w-6 text-right text-[10px]">85%</span></div>
+  <button id="resetBtn" class="bg-slate-800 text-slate-200 font-bold px-2 py-0.5 rounded-lg border border-slate-600 text-[11px] whitespace-nowrap">🔄 재설정</button>
  </div>
 </header>
 
-<main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-2 my-2 min-h-0">
- <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1.5 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden h-[380px] sm:h-[460px] lg:h-[calc(100vh-100px)] min-h-[360px]">
+<main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-1.5 my-1 min-h-0">
+ <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden h-[260px] sm:h-[340px] lg:h-[calc(100vh-70px)] min-h-[250px]">
   <div class="relative w-full flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-slate-950 rounded-lg">
    <canvas id="raceCanvas" class="w-full h-full rounded-lg block"></canvas>
-   <div class="absolute top-2 right-2 z-20"><button id="startBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-4 py-2 rounded-xl shadow-xl active:scale-95 transition flex items-center gap-1.5 text-xs sm:text-sm font-jua border border-amber-200"><span>▶</span><span>경주 스타트!</span></button></div>
+   <div class="absolute top-2 right-2 z-20"><button id="startBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-3.5 py-1.5 rounded-xl shadow-xl active:scale-95 transition flex items-center gap-1 text-xs font-jua border border-amber-200"><span>▶</span><span>경주 스타트!</span></button></div>
    <div id="resultModal" class="absolute inset-0 bg-slate-950/85 hidden items-center justify-center p-2 z-30">
-    <div class="bg-slate-900 border-2 border-amber-500/80 rounded-2xl p-3 sm:p-4 max-w-xs sm:max-w-sm w-full text-center max-h-[95%] flex flex-col min-h-0">
-     <div class="text-2xl">🏆</div><h2 class="text-base sm:text-lg font-black text-amber-400 font-jua">시상식 및 최종 순위</h2>
-     <div id="podiumList" class="space-y-1 my-2 text-left text-[11px] sm:text-xs overflow-y-auto min-h-0 flex-1"></div>
-     <button id="modalRestartBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black py-2 rounded-xl font-jua text-xs sm:text-sm border border-amber-300">🔄 한 게임 더 하기!</button>
+    <div class="bg-slate-900 border-2 border-amber-500/80 rounded-2xl p-3 max-w-xs sm:max-w-sm w-full text-center max-h-[95%] flex flex-col min-h-0">
+     <div class="text-xl">🏆</div><h2 class="text-sm sm:text-base font-black text-amber-400 font-jua">시상식 및 최종 순위</h2>
+     <div id="podiumList" class="space-y-1 my-1.5 text-left text-[11px] sm:text-xs overflow-y-auto min-h-0 flex-1"></div>
+     <button id="modalRestartBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black py-1.5 rounded-xl font-jua text-xs border border-amber-300">🔄 한 게임 더 하기!</button>
     </div>
    </div>
   </div>
-  <div class="mt-1 bg-slate-950/95 px-3 py-1 rounded-lg border border-slate-800 flex items-center justify-between text-[11px] sm:text-xs shrink-0">
+  <div class="mt-1 bg-slate-950/95 px-2.5 py-0.5 rounded-lg border border-slate-800 flex items-center justify-between text-[11px] shrink-0">
    <div id="gameStatusText" class="font-jua text-amber-300 truncate">🚩 [경주 스타트] 버튼을 누르면 경주가 시작됩니다!</div>
    <div id="raceTimer" class="font-mono text-amber-400 font-extrabold whitespace-nowrap ml-2 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">⏱️ 00.00초</div>
   </div>
  </div>
- <div class="hidden sm:flex lg:col-span-1 bg-slate-900 rounded-xl p-2.5 border border-slate-800/80 flex-col min-h-0 overflow-hidden h-[380px] lg:h-[calc(100vh-100px)]">
-  <h2 class="text-xs sm:text-sm font-extrabold text-amber-400 font-jua border-b border-slate-800 pb-1.5 mb-2 flex items-center justify-between shrink-0"><span>📊 실시간 라이브 순위</span><span id="liveStatusBadge" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">대기 중</span></h2>
-  <div id="leaderboardList" class="flex-1 space-y-1.5 overflow-y-auto min-h-0"></div>
+ <div class="hidden sm:flex lg:col-span-1 bg-slate-900 rounded-xl p-2 border border-slate-800/80 flex-col min-h-0 overflow-hidden h-[260px] lg:h-[calc(100vh-70px)]">
+  <h2 class="text-xs font-extrabold text-amber-400 font-jua border-b border-slate-800 pb-1 mb-1.5 flex items-center justify-between shrink-0"><span>📊 실시간 라이브 순위</span><span id="liveStatusBadge" class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full">대기 중</span></h2>
+  <div id="leaderboardList" class="flex-1 space-y-1 overflow-y-auto min-h-0"></div>
  </div>
 </main>
 
@@ -109,7 +109,7 @@ class Horse{
  constructor(id,col){this.id=id;this.col=col;this.reset(0)}
  reset(y){
   this.x=PAD_L;this.y=y;this.speed=0;
-  this.baseSpeed=0.42; // Adjusted for ~15 second winning time
+  this.baseSpeed=0.42;
   this.phase=Math.random()*6.28;this.status='normal';this.timer=0;this.rank=0;this.finished=false;this.finishTime=0;this.chg=Math.random()*40
  }
  update(dt,tw){
@@ -135,7 +135,6 @@ class Horse{
    const moveSpeed = this.speed * dt * 60;
    this.x+=moveSpeed;
    
-   // Faster leg phase for energetic galloping sensation even at slower cruising speed
    const pp=this.phase;
    this.phase += (6.5 + this.speed*3.0) * 8 * dt; 
    if(Math.floor(pp/Math.PI)!==Math.floor(this.phase/Math.PI)){if(Math.random()<.25)playHoof();dust(this.x-14,this.y+12,'#475569',1)}
@@ -150,31 +149,27 @@ class Horse{
   
   c.save();c.translate(this.x,this.y);c.scale(horseScale,horseScale);
   
-  // Larger Warning/Sweat Emojis without text for status feedback
   if(this.status==='injured'){
    c.rotate(.05);
-   c.fillStyle="#ef4444";c.font="bold 32px sans-serif";c.textAlign="center";c.fillText("⚠️",0,-52+bob);
+   c.fillStyle="#ef4444";c.font="bold 28px sans-serif";c.textAlign="center";c.fillText("⚠️",0,-46+bob);
   } else if(this.status==='tired'){
-   c.fillStyle="#3b82f6";c.font="bold 32px sans-serif";c.textAlign="center";c.fillText("💧",0,-52+bob);
+   c.fillStyle="#3b82f6";c.font="bold 28px sans-serif";c.textAlign="center";c.fillText("💧",0,-46+bob);
   }
   
   if(moving)c.rotate(Math.sin(p)*.012);
   
-  // Ground shadow
   c.fillStyle="rgba(255,255,255,.1)";c.beginPath();c.ellipse(0,12,30,4,0,0,6.283);c.fill();
   
   const b=bob;
   const far=k.dark;
   
-  // Far legs
   leg(c,-17,-9+b,p+Math.PI+.9,false,far,6);
   leg(c,15,-9+b,p-.9,true,far,4.6);
   
-  // Tail (Made shorter: about half of previous length)
+  // Shorter tail (about half length)
   c.strokeStyle=k.mane;c.lineCap='round';
-  for(let i=0;i<4;i++){c.lineWidth=3.2-i*.5;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-29,-23+i*1.5,-33+Math.sin(p+i)*1.5,-19+i*1.5,-37+Math.sin(p*1.5+i*.6)*2,-12+i*2+Math.cos(p+i)*1.5);c.stroke()}
+  for(let i=0;i<3;i++){c.lineWidth=3-i*.6;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-28,-23+i*1,-31+Math.sin(p+i)*1,-19+i*1,-34+Math.sin(p*1.5+i*.6)*1.5,-12+i*1.5);c.stroke()}
   
-  // Body (Compact)
   const g=c.createLinearGradient(0,-29,0,-4);g.addColorStop(0,k.coat);g.addColorStop(1,k.dark);
   c.fillStyle=g;c.beginPath();
   c.moveTo(-27,-16+b);
@@ -185,67 +180,54 @@ class Horse{
   c.bezierCurveTo(-20,-3+b,-28,-7+b,-27,-16+b);
   c.fill();
   
-  // Muscle shading
   c.fillStyle="rgba(0,0,0,.18)";c.beginPath();c.ellipse(-16,-14+b,9,8,-.3,0,6.283);c.fill();
   c.beginPath();c.ellipse(14,-15+b,6,8,.2,0,6.283);c.fill();
   
-  // Neck
   c.fillStyle=g;c.beginPath();
-  c.moveTo(13,-26+b);c.bezierCurveTo(19,-35+b,23,-41+b,29,-45+b);
-  c.lineTo(35,-38+b);c.bezierCurveTo(31,-30+b,30,-20+b,25,-10+b);c.closePath();c.fill();
+  c.moveTo(13,-26+b);c.bezierCurveTo(19,-35+b,23,-41+b,27,-44+b);
+  c.lineTo(32,-38+b);c.bezierCurveTo(29,-30+b,28,-20+b,25,-10+b);c.closePath();c.fill();
   
-  // Head (Elongated Snout - Slightly shortened)
+  // Slightly shortened head
   c.fillStyle=k.coat;c.beginPath();
-  c.moveTo(28,-45+b);c.bezierCurveTo(34,-46+b,41,-41+b,48,-33+b); 
-  c.bezierCurveTo(50,-30+b,48,-28+b,45,-28.5+b);
-  c.bezierCurveTo(41,-30+b,36,-31+b,33,-36+b);
-  c.bezierCurveTo(31,-40+b,29,-40+b,28,-45+b);c.fill();
+  c.moveTo(27,-44+b);c.bezierCurveTo(32,-45+b,38,-40+b,44,-33+b); 
+  c.bezierCurveTo(46,-30+b,44,-28+b,41,-28.5+b);
+  c.bezierCurveTo(38,-30+b,34,-31+b,31,-35+b);
+  c.bezierCurveTo(29,-39+b,28,-39+b,27,-44+b);c.fill();
   
-  if(k.blaze){c.strokeStyle="rgba(255,255,255,.75)";c.lineWidth=1.4;c.beginPath();c.moveTo(33,-44.5+b);c.lineTo(46,-33.5+b);c.stroke()}
+  if(k.blaze){c.strokeStyle="rgba(255,255,255,.75)";c.lineWidth=1.4;c.beginPath();c.moveTo(31,-43.5+b);c.lineTo(42,-33.5+b);c.stroke()}
   
-  // Muzzle & Eye
-  c.fillStyle=k.dark;c.beginPath();c.ellipse(47.5,-31+b,2.6,2.2,.6,0,6.283);c.fill();
-  c.fillStyle="#000";c.beginPath();c.arc(48.2,-32+b,.7,0,6.283);c.fill();
-  c.fillStyle="#0b0b0b";c.beginPath();c.ellipse(36,-40.5+b,1.5,1.1,.3,0,6.283);c.fill();
-  c.fillStyle="#fff";c.fillRect(36.4,-41.2+b,.6,.6);
+  c.fillStyle=k.dark;c.beginPath();c.ellipse(43.5,-31+b,2.4,2,.6,0,6.283);c.fill();
+  c.fillStyle="#000";c.beginPath();c.arc(44.1,-32+b,.6,0,6.283);c.fill();
+  c.fillStyle="#0b0b0b";c.beginPath();c.ellipse(33,-39.5+b,1.4,1,.3,0,6.283);c.fill();
+  c.fillStyle="#fff";c.fillRect(33.3,-40.2+b,.5,.5);
   
-  // Ears
-  c.fillStyle=k.coat;c.beginPath();c.moveTo(29,-44+b);c.lineTo(29.5,-51+b);c.lineTo(33,-45.5+b);c.fill();
+  c.fillStyle=k.coat;c.beginPath();c.moveTo(27,-43+b);c.lineTo(27.5,-49+b);c.lineTo(31,-44.5+b);c.fill();
   
-  // Bridle
-  c.strokeStyle="#2a1a10";c.lineWidth=1;c.beginPath();c.moveTo(44.5,-33.5+b);c.lineTo(46,-30+b);c.moveTo(35,-40+b);c.lineTo(41,-32.5+b);c.moveTo(33,-41+b);c.lineTo(38,-34+b);c.stroke();
+  c.strokeStyle="#2a1a10";c.lineWidth=1;c.beginPath();c.moveTo(41,-33.5+b);c.lineTo(42.5,-30+b);c.moveTo(33,-39+b);c.lineTo(38,-32.5+b);c.stroke();
   
-  // Mane
-  c.strokeStyle=k.mane;c.lineWidth=2.4;
-  for(let i=0;i<8;i++){const t=i/7,x=15+t*14,y=-28-t*17+b;c.beginPath();c.moveTo(x,y);c.lineTo(x-6-Math.sin(p*2+i)*1.8,y+3+Math.cos(p*2+i)*1);c.stroke()}
+  c.strokeStyle=k.mane;c.lineWidth=2.2;
+  for(let i=0;i<7;i++){const t=i/6,x=14+t*12,y=-27-t*15+b;c.beginPath();c.moveTo(x,y);c.lineTo(x-5-Math.sin(p*2+i)*1.5,y+3+Math.cos(p*2+i)*1);c.stroke()}
   
-  // Saddle cloth
   c.fillStyle=k.hex;c.beginPath();c.roundRect(-12,-27+b,13,10,2);c.fill();
   c.fillStyle="#fff";c.font="bold 8px sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillText(this.id,-5.5,-22+b);
   
-  // Near legs
   leg(c,-19,-9+b,p+Math.PI+.3,false,k.coat,7);
   leg(c,17,-9+b,p-.2,true,k.coat,5.2);
   
-  // Square Blocky Jockey
   const jb=b*.5;
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle="#f8fafc";c.lineWidth=3.5;c.beginPath();c.moveTo(-4,-29+jb);c.lineTo(5,-23+jb);c.lineTo(3,-15+jb);c.stroke();
   c.strokeStyle="#111";c.lineWidth=3;c.beginPath();c.moveTo(5,-23+jb);c.lineTo(4,-14+jb);c.stroke();
   
-  // Square Torso
   c.fillStyle=k.hex; c.fillRect(-6,-38+jb, 14, 12); 
   
-  // Arm
-  c.strokeStyle=k.hex;c.lineWidth=3;c.beginPath();c.moveTo(8,-36+jb);c.lineTo(17,-34+jb);c.lineTo(25,-34+jb+Math.sin(p*2)*.5);c.stroke(); 
+  c.strokeStyle=k.hex;c.lineWidth=3;c.beginPath();c.moveTo(8,-36+jb);c.lineTo(17,-34+jb);c.lineTo(24,-34+jb+Math.sin(p*2)*.5);c.stroke(); 
   
-  // Helmet & Face
-  c.fillStyle="#f1c9a5";c.beginPath();c.arc(12,-42+jb,3,0,6.283);c.fill();
-  c.fillStyle=k.hex;c.beginPath();c.arc(11.5,-43.2+jb,3.7,3.14,6.283);c.fill();c.fillRect(7.8,-43.4+jb,7.4,1.4);
-  c.fillStyle="#fbbf24";c.fillRect(13,-42+jb,3,1.6);
+  c.fillStyle="#f1c9a5";c.beginPath();c.arc(12,-42+jb,2.8,0,6.283);c.fill();
+  c.fillStyle=k.hex;c.beginPath();c.arc(11.5,-43+jb,3.5,3.14,6.283);c.fill();c.fillRect(8,-43.2+jb,7,1.4);
+  c.fillStyle="#fbbf24";c.fillRect(13,-42+jb,2.8,1.5);
   
-  // Reins
-  c.strokeStyle="#fbbf24";c.lineWidth=1;c.beginPath();c.moveTo(25,-34+jb);c.quadraticCurveTo(35,-31,45.5,-30.5+b);c.stroke();
+  c.strokeStyle="#fbbf24";c.lineWidth=1;c.beginPath();c.moveTo(24,-34+jb);c.quadraticCurveTo(33,-31,41.5,-30.5+b);c.stroke();
   
   c.restore();
  }
