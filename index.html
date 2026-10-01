@@ -7,13 +7,13 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800;900&display=swap" rel="stylesheet">
 <style>
-html,body{height:100%}
-body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:hidden;background:#030712;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+html,body{height:100%; margin:0; padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow-x:hidden;overflow-y:auto;background:#030712;box-sizing:border-box}
 .font-jua{font-family:'Jua',sans-serif}
 .no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{scrollbar-width:none}
 </style>
 </head>
-<body class="bg-slate-950 text-slate-100 w-screen flex flex-col justify-between p-1.5 sm:p-2.5">
+<body class="bg-slate-950 text-slate-100 min-h-screen w-screen flex flex-col justify-between p-2 sm:p-3">
 <header class="w-full bg-slate-900/95 border-b border-amber-500/40 px-3 py-1.5 rounded-xl flex items-center justify-between gap-2 text-xs shrink-0 shadow-lg">
  <div class="flex items-center gap-2 shrink-0"><span class="text-xl">🏇</span><h1 class="font-black text-amber-400 font-jua text-xs sm:text-sm whitespace-nowrap">리얼리스틱 그랑프리</h1></div>
  <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
@@ -27,8 +27,8 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
  </div>
 </header>
 
-<main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-2 my-1.5 min-h-0 overflow-hidden">
- <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1.5 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden h-[420px] sm:h-[480px] lg:h-full min-h-[420px]">
+<main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-2 my-2 min-h-0">
+ <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1.5 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden h-[380px] sm:h-[460px] lg:h-[calc(100vh-100px)] min-h-[360px]">
   <div class="relative w-full flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-slate-950 rounded-lg">
    <canvas id="raceCanvas" class="w-full h-full rounded-lg block"></canvas>
    <div class="absolute top-2 right-2 z-20"><button id="startBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-4 py-2 rounded-xl shadow-xl active:scale-95 transition flex items-center gap-1.5 text-xs sm:text-sm font-jua border border-amber-200"><span>▶</span><span>경주 스타트!</span></button></div>
@@ -45,25 +45,26 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
    <div id="raceTimer" class="font-mono text-amber-400 font-extrabold whitespace-nowrap ml-2 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">⏱️ 00.00초</div>
   </div>
  </div>
- <div class="hidden sm:flex lg:col-span-1 bg-slate-900 rounded-xl p-2.5 border border-slate-800/80 flex-col min-h-0 overflow-hidden">
+ <div class="hidden sm:flex lg:col-span-1 bg-slate-900 rounded-xl p-2.5 border border-slate-800/80 flex-col min-h-0 overflow-hidden h-[380px] lg:h-[calc(100vh-100px)]">
   <h2 class="text-xs sm:text-sm font-extrabold text-amber-400 font-jua border-b border-slate-800 pb-1.5 mb-2 flex items-center justify-between shrink-0"><span>📊 실시간 라이브 순위</span><span id="liveStatusBadge" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">대기 중</span></h2>
   <div id="leaderboardList" class="flex-1 space-y-1.5 overflow-y-auto min-h-0"></div>
  </div>
 </main>
 
 <script>
-// Natural, vivid horse colors without any completely dark/black horses
+// Natural, vivid horse coat colors avoiding overly dark/black shades
 const COLORS=[
 {name:"레드 썬더",hex:"#ef4444",coat:"#a0522d",dark:"#70391e",mane:"#3e1f10",blaze:1},
 {name:"블루 스톰",hex:"#3b82f6",coat:"#cd853f",dark:"#9a632f",mane:"#5c3a1c",blaze:0},
-{name:"골든 차크라",hex:"#f59e0b",coat:"#eeb422",dark:"#b8860b",mane:"#8b6508",blaze:1},
+{name:"골든 차크라",hex:"#f59e0b",coat:"#d4a373",dark:"#a0784d",mane:"#604020",blaze:1},
 {name:"에메랄드 윈드",hex:"#10b981",coat:"#bc8f8f",dark:"#8b6969",mane:"#5c4646",blaze:0},
-{name:"퍼플 갤럭시",hex:"#a855f7",coat:"#f5deb3",dark:"#d2b48c",mane:"#fff8dc",blaze:1},
+{name:"퍼플 갤럭시",hex:"#a855f7",coat:"#deb887",dark:"#b89768",mane:"#fff8dc",blaze:1},
 {name:"오렌지 블레이즈",hex:"#f97316",coat:"#cd5c5c",dark:"#8b3a3a",mane:"#5c2626",blaze:0},
-{name:"핑크 메테오",hex:"#ec4899",coat:"#f0e68c",dark:"#bdb76b",mane:"#8b864e",blaze:1},
-{name:"시안 라이트닝",hex:"#06b6d4",coat:"#ffa07a",dark:"#cd853f",mane:"#8b5a2b",blaze:0},
-{name:"라임 스프린트",hex:"#84cc16",coat:"#d2b48c",dark:"#a0522d",mane:"#60311a",blaze:1},
+{name:"핑크 메테오",hex:"#ec4899",coat:"#f4a460",dark:"#b8733d",mane:"#5c3a1c",blaze:1},
+{name:"시안 라이트닝",hex:"#06b6d4",coat:"#d2b48c",dark:"#a0784d",mane:"#5c3a1c",blaze:0},
+{name:"라임 스프린트",hex:"#84cc16",coat:"#c19a6b",dark:"#8b6941",mane:"#4a3520",blaze:1},
 {name:"크림슨 발키리",hex:"#e11d48",coat:"#d2691e",dark:"#a55217",mane:"#6b360f",blaze:0}];
+
 const $=id=>document.getElementById(id);
 const canvas=$('raceCanvas'),ctx=canvas.getContext('2d');
 const horseCountSelect=$('horseCountSelect'),horseScaleRange=$('horseScaleRange'),startBtn=$('startBtn'),leaderboardList=$('leaderboardList'),gameStatusText=$('gameStatusText'),raceTimer=$('raceTimer'),liveStatusBadge=$('liveStatusBadge'),resultModal=$('resultModal'),podiumList=$('podiumList');
@@ -83,8 +84,8 @@ const PAD_L=60,PAD_R=75;let finishLineX=0;
 
 // Clean, minimal dust effects
 function dust(x,y,color='#64748b',n=1){
- if(particles.length>15)return;
- for(let i=0;i<n;i++) particles.push({x:x+(Math.random()-.5)*4, y:y+(Math.random()-.5)*2, vx:-0.3-Math.random()*0.6, vy:-0.1-Math.random()*0.3, r:0.8+Math.random()*1.2, a:0.4+Math.random()*0.2, c:color});
+ if(particles.length>12)return;
+ for(let i=0;i<n;i++) particles.push({x:x+(Math.random()-.5)*4, y:y+(Math.random()-.5)*2, vx:-0.3-Math.random()*0.5, vy:-0.1-Math.random()*0.2, r:0.8+Math.random()*1.0, a:0.35+Math.random()*0.2, c:color});
 }
 function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.a-=dt*1.5;p.r+=dt*1.5;if(p.a<=0){particles.splice(i,1);continue}ctx.save();ctx.globalAlpha=p.a;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();ctx.restore()}}
 
@@ -93,7 +94,7 @@ function leg(c,hx,hy,p,front,col,w){
  const sw=Math.sin(p),lift=Math.max(0,Math.cos(p));
  const a1=sw*(front?.8:.7);
  const a2=front?a1-.15-lift*1.25:a1+.35-lift*.9;
- const L1=front?11:8,L2=front?11:9.5; // Shorter legs
+ const L1=front?11:8,L2=front?11:9.5;
  const kx=hx+Math.sin(a1)*L1,ky=hy+Math.cos(a1)*L1;
  const a3=front?a2+.25*lift:a2-.45;
  const fx=kx+Math.sin(a2)*L2,fy=ky+Math.cos(a2)*L2;
@@ -108,7 +109,7 @@ class Horse{
  constructor(id,col){this.id=id;this.col=col;this.reset(0)}
  reset(y){
   this.x=PAD_L;this.y=y;this.speed=0;
-  this.baseSpeed=0.45; // Adjusted so winning time is around 15 seconds
+  this.baseSpeed=0.42; // Adjusted for ~15 second winning time
   this.phase=Math.random()*6.28;this.status='normal';this.timer=0;this.rank=0;this.finished=false;this.finishTime=0;this.chg=Math.random()*40
  }
  update(dt,tw){
@@ -127,7 +128,7 @@ class Horse{
   } else {
    if(--this.chg<=0){
     this.chg=25+Math.random()*50;
-    this.baseSpeed=(0.38+Math.random()*0.25); 
+    this.baseSpeed=(0.35+Math.random()*0.2); 
    }
    
    this.speed=this.baseSpeed*(this.status==='tired'?.4:1)*(tw/750);
@@ -136,7 +137,7 @@ class Horse{
    
    // Faster leg phase for energetic galloping sensation even at slower cruising speed
    const pp=this.phase;
-   this.phase += (5.5 + this.speed*3.0) * 8 * dt; 
+   this.phase += (6.5 + this.speed*3.0) * 8 * dt; 
    if(Math.floor(pp/Math.PI)!==Math.floor(this.phase/Math.PI)){if(Math.random()<.25)playHoof();dust(this.x-14,this.y+12,'#475569',1)}
   }
   
@@ -152,9 +153,9 @@ class Horse{
   // Larger Warning/Sweat Emojis without text for status feedback
   if(this.status==='injured'){
    c.rotate(.05);
-   c.fillStyle="#ef4444";c.font="bold 30px sans-serif";c.textAlign="center";c.fillText("⚠️️",0,-52+bob);
+   c.fillStyle="#ef4444";c.font="bold 32px sans-serif";c.textAlign="center";c.fillText("⚠️",0,-52+bob);
   } else if(this.status==='tired'){
-   c.fillStyle="#3b82f6";c.font="bold 30px sans-serif";c.textAlign="center";c.fillText("💧",0,-52+bob);
+   c.fillStyle="#3b82f6";c.font="bold 32px sans-serif";c.textAlign="center";c.fillText("💧",0,-52+bob);
   }
   
   if(moving)c.rotate(Math.sin(p)*.012);
@@ -169,9 +170,9 @@ class Horse{
   leg(c,-17,-9+b,p+Math.PI+.9,false,far,6);
   leg(c,15,-9+b,p-.9,true,far,4.6);
   
-  // Tail
+  // Tail (Made shorter: about half of previous length)
   c.strokeStyle=k.mane;c.lineCap='round';
-  for(let i=0;i<4;i++){c.lineWidth=3.2-i*.5;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-34,-24+i*2,-42+Math.sin(p+i)*3,-18+i*3,-50+Math.sin(p*1.5+i*.6)*4,-6+i*4+Math.cos(p+i)*3);c.stroke()}
+  for(let i=0;i<4;i++){c.lineWidth=3.2-i*.5;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-29,-23+i*1.5,-33+Math.sin(p+i)*1.5,-19+i*1.5,-37+Math.sin(p*1.5+i*.6)*2,-12+i*2+Math.cos(p+i)*1.5);c.stroke()}
   
   // Body (Compact)
   const g=c.createLinearGradient(0,-29,0,-4);g.addColorStop(0,k.coat);g.addColorStop(1,k.dark);
@@ -193,26 +194,26 @@ class Horse{
   c.moveTo(13,-26+b);c.bezierCurveTo(19,-35+b,23,-41+b,29,-45+b);
   c.lineTo(35,-38+b);c.bezierCurveTo(31,-30+b,30,-20+b,25,-10+b);c.closePath();c.fill();
   
-  // Head (Elongated Snout)
+  // Head (Elongated Snout - Slightly shortened)
   c.fillStyle=k.coat;c.beginPath();
-  c.moveTo(28,-45+b);c.bezierCurveTo(36,-46+b,45,-41+b,54,-33+b); 
-  c.bezierCurveTo(56,-30+b,54,-28+b,51,-28.5+b);
-  c.bezierCurveTo(46,-30+b,40,-31+b,35,-36+b);
-  c.bezierCurveTo(33,-40+b,30,-40+b,28,-45+b);c.fill();
+  c.moveTo(28,-45+b);c.bezierCurveTo(34,-46+b,41,-41+b,48,-33+b); 
+  c.bezierCurveTo(50,-30+b,48,-28+b,45,-28.5+b);
+  c.bezierCurveTo(41,-30+b,36,-31+b,33,-36+b);
+  c.bezierCurveTo(31,-40+b,29,-40+b,28,-45+b);c.fill();
   
-  if(k.blaze){c.strokeStyle="rgba(255,255,255,.75)";c.lineWidth=1.4;c.beginPath();c.moveTo(34,-44.5+b);c.lineTo(52,-33.5+b);c.stroke()}
+  if(k.blaze){c.strokeStyle="rgba(255,255,255,.75)";c.lineWidth=1.4;c.beginPath();c.moveTo(33,-44.5+b);c.lineTo(46,-33.5+b);c.stroke()}
   
   // Muzzle & Eye
-  c.fillStyle=k.dark;c.beginPath();c.ellipse(52.5,-31+b,2.8,2.2,.6,0,6.283);c.fill();
-  c.fillStyle="#000";c.beginPath();c.arc(53.2,-32+b,.7,0,6.283);c.fill();
-  c.fillStyle="#0b0b0b";c.beginPath();c.ellipse(37,-40.5+b,1.5,1.1,.3,0,6.283);c.fill();
-  c.fillStyle="#fff";c.fillRect(37.4,-41.2+b,.6,.6);
+  c.fillStyle=k.dark;c.beginPath();c.ellipse(47.5,-31+b,2.6,2.2,.6,0,6.283);c.fill();
+  c.fillStyle="#000";c.beginPath();c.arc(48.2,-32+b,.7,0,6.283);c.fill();
+  c.fillStyle="#0b0b0b";c.beginPath();c.ellipse(36,-40.5+b,1.5,1.1,.3,0,6.283);c.fill();
+  c.fillStyle="#fff";c.fillRect(36.4,-41.2+b,.6,.6);
   
   // Ears
   c.fillStyle=k.coat;c.beginPath();c.moveTo(29,-44+b);c.lineTo(29.5,-51+b);c.lineTo(33,-45.5+b);c.fill();
   
   // Bridle
-  c.strokeStyle="#2a1a10";c.lineWidth=1;c.beginPath();c.moveTo(49.5,-33.5+b);c.lineTo(51,-30+b);c.moveTo(36,-40+b);c.lineTo(46,-32.5+b);c.moveTo(34,-41+b);c.lineTo(43,-34+b);c.stroke();
+  c.strokeStyle="#2a1a10";c.lineWidth=1;c.beginPath();c.moveTo(44.5,-33.5+b);c.lineTo(46,-30+b);c.moveTo(35,-40+b);c.lineTo(41,-32.5+b);c.moveTo(33,-41+b);c.lineTo(38,-34+b);c.stroke();
   
   // Mane
   c.strokeStyle=k.mane;c.lineWidth=2.4;
@@ -226,11 +227,11 @@ class Horse{
   leg(c,-19,-9+b,p+Math.PI+.3,false,k.coat,7);
   leg(c,17,-9+b,p-.2,true,k.coat,5.2);
   
-  // Jockey (Square Blocky Body)
+  // Square Blocky Jockey
   const jb=b*.5;
   c.lineCap='round';c.lineJoin='round';
-  c.strokeStyle="#f8fafc";c.lineWidth=3.5;c.beginPath();c.moveTo(-4,-29+jb);c.lineTo(5,-23+jb);c.lineTo(3,-15+jb);c.stroke(); // breeches
-  c.strokeStyle="#111";c.lineWidth=3;c.beginPath();c.moveTo(5,-23+jb);c.lineTo(4,-14+jb);c.stroke(); // boot
+  c.strokeStyle="#f8fafc";c.lineWidth=3.5;c.beginPath();c.moveTo(-4,-29+jb);c.lineTo(5,-23+jb);c.lineTo(3,-15+jb);c.stroke();
+  c.strokeStyle="#111";c.lineWidth=3;c.beginPath();c.moveTo(5,-23+jb);c.lineTo(4,-14+jb);c.stroke();
   
   // Square Torso
   c.fillStyle=k.hex; c.fillRect(-6,-38+jb, 14, 12); 
@@ -244,7 +245,7 @@ class Horse{
   c.fillStyle="#fbbf24";c.fillRect(13,-42+jb,3,1.6);
   
   // Reins
-  c.strokeStyle="#fbbf24";c.lineWidth=1;c.beginPath();c.moveTo(25,-34+jb);c.quadraticCurveTo(36,-31,50.5,-30.5+b);c.stroke();
+  c.strokeStyle="#fbbf24";c.lineWidth=1;c.beginPath();c.moveTo(25,-34+jb);c.quadraticCurveTo(35,-31,45.5,-30.5+b);c.stroke();
   
   c.restore();
  }
@@ -254,10 +255,10 @@ function createHorses(){horses=[];for(let i=0;i<numHorses;i++)horses.push(new Ho
 
 function resizeCanvas(){
  const c=canvas.parentElement;canvas.width=c.clientWidth;canvas.height=c.clientHeight;finishLineX=canvas.width-PAD_R;
- const topMargin = 45; // Generous top margin to prevent clipping
+ const topMargin = 55; // Generous top margin to prevent clipping for 1st lane
  const bottomMargin = 15;
  const totalH = (canvas.height - topMargin - bottomMargin);
- const lh = totalH / numHorses;
+ const lh = totalH / numHorses; // Divide evenly across all competing horses
  horses.forEach((h,i)=>{
   const y = topMargin + lh * i + lh/2; 
   if(!isRacing) h.reset(y); 
@@ -269,7 +270,7 @@ window.addEventListener('resize',resizeCanvas);
 function drawTrack(){
  ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);
  
- const topMargin = 45;
+ const topMargin = 55;
  const bottomMargin = 15;
  const top = topMargin, bot = canvas.height - bottomMargin;
  
