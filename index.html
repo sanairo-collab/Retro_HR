@@ -27,7 +27,6 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
  </div>
 </header>
 
-
 <section id="multiPanel" style="font:14px 'Noto Sans KR',sans-serif;background:#0f172a;color:#f8fafc;border:1px solid #475569;border-radius:14px;padding:12px;margin:8px;">
  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
   <b style="color:#fbbf24">멀티 경마</b><input id="mpName" maxlength="16" placeholder="닉네임" style="width:110px;padding:7px;background:#020617;color:white;border:1px solid #475569;border-radius:8px"><input id="mpRoomName" maxlength="24" placeholder="방 이름" style="width:130px;padding:7px;background:#020617;color:white;border:1px solid #475569;border-radius:8px">
@@ -41,7 +40,7 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
    <span id="mpPickHint" style="color:#cbd5e1">트랙에서 원하는 말을 눌러 선택하세요.</span>
    <button id="mpSkip">선택 건너뛰기</button>
    <label id="mpHorseSetting" hidden>말 수 <select id="mpHorseCount" style="background:#020617;color:#fbbf24;padding:6px;border-radius:6px"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
-   <button id="mpStart" hidden>경기 시작</button><button id="mpLeave">나가기</button>
+   <button id="mpLeave">나가기</button>
   </div>
   <div id="mpResults" style="margin-top:8px;color:#fbbf24"></div>
  </div>
@@ -72,7 +71,6 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
 </main>
 
 <script>
-// Natural, vivid horse coat colors avoiding overly dark/black shades
 const COLORS=[
 {name:"레드 썬더",hex:"#ef4444",coat:"#a0522d",dark:"#70391e",mane:"#3e1f10",blaze:1},
 {name:"블루 스톰",hex:"#3b82f6",coat:"#cd853f",dark:"#9a632f",mane:"#5c3a1c",blaze:0},
@@ -99,17 +97,15 @@ let wakeLock=null;
 async function reqWake(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
 function relWake(){if(wakeLock){wakeLock.release().then(()=>wakeLock=null).catch(()=>{})}}
 
-let numHorses=5,horseScale=.85,horses=[],particles=[],isRacing=false,isFinished=false,raceStartTime=0,raceStartedAt=0,raceSeed=1,elapsedTime=0,finishOrder=[],raceLaunched=false,officiallyFinished=false;
+let numHorses=5,horseScale=.85,horses=[],particles=[],isRacing=false,isFinished=false,raceStartedAt=0,raceSeed=1,elapsedTime=0,finishOrder=[],raceLaunched=false,officiallyFinished=false;
 let PAD_L=125,PAD_R=75;let finishLineX=0;
 
-// Clean, minimal dust effects
 function dust(x,y,color='#64748b',n=1){
  if(particles.length>12)return;
  for(let i=0;i<n;i++) particles.push({x:x+(Math.random()-.5)*4, y:y+(Math.random()-.5)*2, vx:-0.3-Math.random()*0.5, vy:-0.1-Math.random()*0.2, r:0.8+Math.random()*1.0, a:0.35+Math.random()*0.2, c:color});
 }
 function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.a-=dt*1.5;p.r+=dt*1.5;if(p.a<=0){particles.splice(i,1);continue}ctx.save();ctx.globalAlpha=p.a;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();ctx.restore()}}
 
-// Short, compact articulated leg
 function leg(c,hx,hy,p,front,col,w){
  const sw=Math.sin(p),lift=Math.max(0,Math.cos(p));
  const a1=sw*(front?.8:.7);
@@ -125,6 +121,7 @@ function leg(c,hx,hy,p,front,col,w){
  c.lineWidth=w*.5;c.strokeStyle="#161010";c.beginPath();c.moveTo(fx,fy);c.lineTo(hfx,hfy);c.stroke();
 }
 
+// 결정론적 무작위 알고리즘 (모든 장치에서 동일한 레이스 결과 보장)
 function raceRandom(seed,horseId,slot){
  let x=(Number(seed)^Math.imul(horseId,0x9e3779b1)^Math.imul(slot+1,0x85ebca6b))>>>0;
  x=Math.imul(x^(x>>>16),0x7feb352d);x=Math.imul(x^(x>>>15),0x846ca68b);x^=x>>>16;
@@ -179,28 +176,20 @@ class Horse{
   }
   
   if(moving)c.rotate(Math.sin(p)*.012);
-  
   c.fillStyle="rgba(255,255,255,.1)";c.beginPath();c.ellipse(0,12,30,4,0,0,6.283);c.fill();
   
-  const b=bob;
-  const far=k.dark;
-  
+  const b=bob,far=k.dark;
   leg(c,-17,-9+b,p+Math.PI+.9,false,far,6);
   leg(c,15,-9+b,p-.9,true,far,4.6);
   
-  // Shorter tail (about half length)
   c.strokeStyle=k.mane;c.lineCap='round';
   for(let i=0;i<3;i++){c.lineWidth=3-i*.6;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-28,-23+i*1,-31+Math.sin(p+i)*1,-19+i*1,-34+Math.sin(p*1.5+i*.6)*1.5,-12+i*1.5);c.stroke()}
   
   const g=c.createLinearGradient(0,-29,0,-4);g.addColorStop(0,k.coat);g.addColorStop(1,k.dark);
   c.fillStyle=g;c.beginPath();
-  c.moveTo(-27,-16+b);
-  c.bezierCurveTo(-28,-27+b,-13,-28+b,-3,-25+b);
-  c.bezierCurveTo(5,-24+b,13,-27+b,20,-27+b);
-  c.bezierCurveTo(28,-25+b,29,-14+b,23,-6+b);
-  c.bezierCurveTo(14,-2+b,0,-5+b,-8,-6+b);
-  c.bezierCurveTo(-20,-3+b,-28,-7+b,-27,-16+b);
-  c.fill();
+  c.moveTo(-27,-16+b);c.bezierCurveTo(-28,-27+b,-13,-28+b,-3,-25+b);
+  c.bezierCurveTo(5,-24+b,13,-27+b,20,-27+b);c.bezierCurveTo(28,-25+b,29,-14+b,23,-6+b);
+  c.bezierCurveTo(14,-2+b,0,-5+b,-8,-6+b);c.bezierCurveTo(-20,-3+b,-28,-7+b,-27,-16+b);c.fill();
   
   c.fillStyle="rgba(0,0,0,.18)";c.beginPath();c.ellipse(-16,-14+b,9,8,-.3,0,6.283);c.fill();
   c.beginPath();c.ellipse(14,-15+b,6,8,.2,0,6.283);c.fill();
@@ -209,11 +198,9 @@ class Horse{
   c.moveTo(13,-26+b);c.bezierCurveTo(19,-35+b,23,-41+b,27,-44+b);
   c.lineTo(32,-38+b);c.bezierCurveTo(29,-30+b,28,-20+b,25,-10+b);c.closePath();c.fill();
   
-  // Slightly shortened head
   c.fillStyle=k.coat;c.beginPath();
   c.moveTo(27,-44+b);c.bezierCurveTo(32,-45+b,38,-40+b,44,-33+b); 
-  c.bezierCurveTo(46,-30+b,44,-28+b,41,-28.5+b);
-  c.bezierCurveTo(38,-30+b,34,-31+b,31,-35+b);
+  c.bezierCurveTo(46,-30+b,44,-28+b,41,-28.5+b);c.bezierCurveTo(38,-30+b,34,-31+b,31,-35+b);
   c.bezierCurveTo(29,-39+b,28,-39+b,27,-44+b);c.fill();
   
   if(k.blaze){c.strokeStyle="rgba(255,255,255,.75)";c.lineWidth=1.4;c.beginPath();c.moveTo(31,-43.5+b);c.lineTo(42,-33.5+b);c.stroke()}
@@ -224,7 +211,6 @@ class Horse{
   c.fillStyle="#fff";c.fillRect(33.3,-40.2+b,.5,.5);
   
   c.fillStyle=k.coat;c.beginPath();c.moveTo(27,-43+b);c.lineTo(27.5,-49+b);c.lineTo(31,-44.5+b);c.fill();
-  
   c.strokeStyle="#2a1a10";c.lineWidth=1;c.beginPath();c.moveTo(41,-33.5+b);c.lineTo(42.5,-30+b);c.moveTo(33,-39+b);c.lineTo(38,-32.5+b);c.stroke();
   
   c.strokeStyle=k.mane;c.lineWidth=2.2;
@@ -242,13 +228,10 @@ class Horse{
   c.strokeStyle="#111";c.lineWidth=3;c.beginPath();c.moveTo(5,-23+jb);c.lineTo(4,-14+jb);c.stroke();
   
   c.fillStyle=k.hex; c.fillRect(-6,-38+jb, 14, 12); 
-  
   c.strokeStyle=k.hex;c.lineWidth=3;c.beginPath();c.moveTo(8,-36+jb);c.lineTo(17,-34+jb);c.lineTo(24,-34+jb+Math.sin(p*2)*.5);c.stroke(); 
-  
   c.fillStyle="#f1c9a5";c.beginPath();c.arc(12,-42+jb,2.8,0,6.283);c.fill();
   c.fillStyle=k.hex;c.beginPath();c.arc(11.5,-43+jb,3.5,3.14,6.283);c.fill();c.fillRect(8,-43.2+jb,7,1.4);
   c.fillStyle="#fbbf24";c.fillRect(13,-42+jb,2.8,1.5);
-  
   c.strokeStyle="#fbbf24";c.lineWidth=1;c.beginPath();c.moveTo(24,-34+jb);c.quadraticCurveTo(33,-31,41.5,-30.5+b);c.stroke();
   
   c.restore();
@@ -259,10 +242,9 @@ function createHorses(){horses=[];for(let i=0;i<numHorses;i++)horses.push(new Ho
 
 function resizeCanvas(){
  const c=canvas.parentElement;canvas.width=c.clientWidth;canvas.height=c.clientHeight;const layoutScale=Math.max(.62,Math.min(1,canvas.width/750));PAD_L=Math.round(125*layoutScale);PAD_R=Math.round(75*layoutScale);finishLineX=canvas.width-PAD_R;
- const topMargin = 55; // Generous top margin to prevent clipping for 1st lane
- const bottomMargin = 15;
+ const topMargin = 55, bottomMargin = 15;
  const totalH = (canvas.height - topMargin - bottomMargin);
- const lh = totalH / numHorses; // Divide evenly across all competing horses
+ const lh = totalH / numHorses;
  horses.forEach((h,i)=>{
   const y = topMargin + lh * i + lh/2; 
   if(!isRacing) h.reset(y); 
@@ -273,15 +255,10 @@ window.addEventListener('resize',resizeCanvas);
 
 function drawTrack(){
  ctx.fillStyle="#000";ctx.fillRect(0,0,canvas.width,canvas.height);
- 
- const topMargin = 55;
- const bottomMargin = 15;
+ const topMargin = 55, bottomMargin = 15;
  const top = topMargin, bot = canvas.height - bottomMargin;
- 
  ctx.fillStyle="#070707";ctx.fillRect(0,top,canvas.width,bot-top);
- 
- const totalH = (bot - top);
- const lh = totalH / numHorses;
+ const totalH = (bot - top), lh = totalH / numHorses;
  
  ctx.strokeStyle="rgba(255,255,255,.15)";ctx.lineWidth=1.5;ctx.setLineDash([8,8]);
  for(let i=1;i<numHorses;i++){
@@ -289,8 +266,8 @@ function drawTrack(){
   ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
  }
  ctx.setLineDash([]);
- 
  ctx.strokeStyle="#fff";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(PAD_L,top);ctx.lineTo(PAD_L,bot);ctx.stroke();
+ 
  const picks=window.horsePickState?.()||{};
  for(const [playerId,user] of Object.entries(picks.users||{})){
   if(!user.pick)continue;
@@ -331,11 +308,11 @@ function showResult(){
 function startRace(sharedSeed,sharedStartAt){
  if(isRacing)return;initAudio();reqWake();
  raceSeed=Number.isFinite(Number(sharedSeed))?Number(sharedSeed):Math.floor(Math.random()*0x7fffffff);raceStartedAt=Number(sharedStartAt)||Date.now();
- isRacing=true;isFinished=false;raceLaunched=false;officiallyFinished=false;finishOrder=[];raceStartTime=performance.now()-Math.max(0,Date.now()-raceStartedAt);elapsedTime=Math.max(0,(Date.now()-raceStartedAt)/1000);
+ isRacing=true;isFinished=false;raceLaunched=false;officiallyFinished=false;finishOrder=[];elapsedTime=Math.max(0,(Date.now()-raceStartedAt)/1000);
  horses.forEach(h=>{h.x=PAD_L;h.speed=0;h.status='normal';h.finished=false;h.rank=0;h.finishTime=0;h.phaseStart=raceRandom(raceSeed,h.id,999)*Math.PI*2;h.phase=h.phaseStart});
  startBtn.classList.add('hidden');resultModal.classList.add('hidden');resultModal.classList.remove('flex');
  liveStatusBadge.textContent="경주 진행 중";liveStatusBadge.className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse";
- gameStatusText.textContent=Date.now()<raceStartedAt?"출발 준비 중입니다. 모든 참가자가 함께 출발합니다.":"🔥 박진감 넘치는 경주가 진행 중입니다!";
+ gameStatusText.textContent=Date.now()<raceStartedAt?"출발 준비 중입니다. 3초 후 동시에 출발합니다!":"🔥 박진감 넘치는 경주가 진행 중입니다!";
 }
 
 function resetGame(){
@@ -351,12 +328,22 @@ function animate(now){
  const dt=Math.min((now-last)/1000,.08);last=now;
  if(isRacing&&!isFinished){
   const untilStart=(raceStartedAt-Date.now())/1000;elapsedTime=Math.max(0,(Date.now()-raceStartedAt)/1000);
-  if(untilStart>0){raceTimer.textContent=`출발까지 ${untilStart.toFixed(1)}초`;gameStatusText.textContent="출발선 대기 중 — 참가자 모두 동시에 출발합니다.";liveStatusBadge.textContent="출발 준비"}
-  else{raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;if(!raceLaunched){raceLaunched=true;gameStatusText.textContent="🔥 경주가 시작됐습니다!";liveStatusBadge.textContent="경주 진행 중"}}
-  if(finishOrder.length===horses.length&&!isFinished){isFinished=true;isRacing=false;relWake();
+  if(untilStart>0){
+   raceTimer.textContent=`출발까지 ${untilStart.toFixed(1)}초`;
+   gameStatusText.textContent=`🚨 출발 ${Math.ceil(untilStart)}초 전 — 참가자 모두 동시에 출발합니다!`;
+   liveStatusBadge.textContent="3초 카운트다운";
+  }else{
+   raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;
+   if(!raceLaunched){raceLaunched=true;gameStatusText.textContent="🔥 경주가 시작됐습니다!";liveStatusBadge.textContent="경주 진행 중"}
+  }
+  if(finishOrder.length===horses.length&&!isFinished){
+   isFinished=true;isRacing=false;relWake();
    liveStatusBadge.textContent=window.raceApi?.isMultiplayer?.()?"결과 동기화 중":"경기 종료";liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
-   gameStatusText.textContent=window.raceApi?.isMultiplayer?.()?"완주했습니다. 참가자 전체 결과를 확인하고 있습니다.":`🏆 경주 종료! 우승마: ${finishOrder[0].col.name}`;
-   if(!window.raceApi?.isMultiplayer?.())playFanfare();window.dispatchEvent(new CustomEvent('horse-race-finished',{detail:finishOrder.map(h=>({id:h.id,time:h.finishTime}))}));if(!window.raceApi?.isMultiplayer?.())setTimeout(showResult,400)}
+   gameStatusText.textContent=window.raceApi?.isMultiplayer?.()?"완주했습니다. 참가자 전체 결과를 집계 중입니다.":`🏆 경주 종료! 우승마: ${finishOrder[0].col.name}`;
+   if(!window.raceApi?.isMultiplayer?.())playFanfare();
+   window.dispatchEvent(new CustomEvent('horse-race-finished',{detail:finishOrder.map(h=>({id:h.id,time:h.finishTime}))}));
+   if(!window.raceApi?.isMultiplayer?.())setTimeout(showResult,400);
+  }
  }
  ctx.clearRect(0,0,canvas.width,canvas.height);drawTrack();drawParticles(dt);
  [...horses].sort((a,b)=>a.y-b.y).forEach(h=>{h.update(dt,canvas.width);h.draw(ctx)});
@@ -364,67 +351,232 @@ function animate(now){
  requestAnimationFrame(animate);
 }
 
-window.raceApi={start:startRace,isMultiplayer:()=>Boolean(window.__horseRoomActive),completeOfficially:results=>{if(!Array.isArray(results)||!results.length)return;finishOrder=results.map((r,i)=>horses.find(h=>h.id===Number(r.horse))).filter(Boolean);finishOrder.sort((a,b)=>results.findIndex(r=>Number(r.horse)===a.id)-results.findIndex(r=>Number(r.horse)===b.id));finishOrder.forEach((h,i)=>{h.rank=i+1;h.finishTime=Number(results[i]?.time)||h.finishTime;h.x=finishLineX;h.finished=true;h.status='normal'});isRacing=false;isFinished=true;raceLaunched=true;relWake();raceTimer.textContent=`⏱️ ${Math.max(...finishOrder.map(h=>h.finishTime)).toFixed(2)}초`;liveStatusBadge.textContent='경기 종료';gameStatusText.textContent='참가자 전체 경기가 종료됐습니다.';if(!officiallyFinished){officiallyFinished=true;playFanfare()}updateLeaderboard()},getHorseCount:()=>numHorses,setHorseCount:n=>{numHorses=n;horseCountSelect.value=String(n);createHorses();resetGame()}};
+window.raceApi={
+ start:startRace,
+ isMultiplayer:()=>Boolean(window.__horseRoomActive),
+ completeOfficially:results=>{
+  if(!Array.isArray(results)||!results.length)return;
+  finishOrder=results.map((r,i)=>horses.find(h=>h.id===Number(r.horse))).filter(Boolean);
+  finishOrder.sort((a,b)=>results.findIndex(r=>Number(r.horse)===a.id)-results.findIndex(r=>Number(r.horse)===b.id));
+  finishOrder.forEach((h,i)=>{h.rank=i+1;h.finishTime=Number(results[i]?.time)||h.finishTime;h.x=finishLineX;h.finished=true;h.status='normal'});
+  isRacing=false;isFinished=true;raceLaunched=true;relWake();
+  raceTimer.textContent=`⏱️ ${Math.max(...finishOrder.map(h=>h.finishTime)).toFixed(2)}초`;
+  liveStatusBadge.textContent='경기 종료';
+  gameStatusText.textContent='참가자 전체 경기가 종료됐습니다.';
+  if(!officiallyFinished){officiallyFinished=true;playFanfare()}
+  updateLeaderboard();
+ },
+ getHorseCount:()=>numHorses,
+ setHorseCount:n=>{numHorses=n;horseCountSelect.value=String(n);createHorses();resetGame()}
+};
+
 startBtn.addEventListener('click',startRace);
-$('resetBtn').addEventListener('click',resetGame);
-$('modalRestartBtn').addEventListener('click',resetGame);
+$('resetBtn').addEventListener('click',resetGame);$('modalRestartBtn').addEventListener('click',resetGame);
 horseCountSelect.addEventListener('change',e=>{numHorses=parseInt(e.target.value,10);createHorses();resetGame()});
 horseScaleRange.addEventListener('input',e=>{const v=parseInt(e.target.value,10);horseScale=v/100;$('horseScaleVal').textContent=v+'%'});
 window.addEventListener('load',()=>{createHorses();resizeCanvas();updateLeaderboard();requestAnimationFrame(animate)});
 </script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 const appId=typeof __app_id!=='undefined'?__app_id:'penalty-shootout-app';
-const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebase_config):{apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxqHt_qymY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843"};
+const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebase_config):{apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxqHt_qymqY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const roomRef=id=>doc(db,'artifacts',appId,'public','data','horse_rooms',id);
-const msg=$('mpMessage'),roomBox=$('mpRoom');let uid='',room='',roomData=null,unsubscribe=null,isHost=false,lastPhase='',playerColors=new Map();window.__horseRoomActive=false;
+
+let uid='',room='',roomData=null,unsubscribe=null,isHost=false,lastPhase='',playerColors=new Map();
+window.__horseRoomActive=false;
 window.horsePickState=()=>({users:roomData?.users||{},colors:Object.fromEntries(playerColors)});
+
 const buttonStyle='padding:7px 10px;border:1px solid #64748b;border-radius:8px;background:#1e293b;color:#f8fafc;font-weight:bold;cursor:pointer';
 document.querySelectorAll('#multiPanel button').forEach(b=>b.style.cssText=buttonStyle);
-async function initAuth(){try{let cred;if(typeof __initial_auth_token!=="undefined"&&__initial_auth_token)cred=await signInWithCustomToken(auth,__initial_auth_token);else cred=await signInAnonymously(auth);uid=cred.user.uid;msg.textContent='온라인 · 닉네임을 입력해 방을 만들거나 참가하세요.'}catch(e){console.error('Firebase auth init error',e);msg.textContent=`Firebase 로그인 오류 (${e.code||'unknown'}): ${e.message}`}}
+
+async function initAuth(){
+ try{
+  let cred;
+  if(typeof __initial_auth_token!=="undefined"&&__initial_auth_token)cred=await signInWithCustomToken(auth,__initial_auth_token);
+  else cred=await signInAnonymously(auth);
+  uid=cred.user.uid;
+  msg.textContent='온라인 · 닉네임을 입력해 방을 만들거나 참가하세요.';
+ }catch(e){
+  console.error('Firebase auth init error',e);
+  msg.textContent=`Firebase 로그인 오류 (${e.code||'unknown'}): ${e.message}`;
+ }
+}
 initAuth();
+
 function cleanName(){return $('mpName').value.trim().slice(0,16)||'게스트'}
 function code(){return Math.random().toString(36).slice(2,8).toUpperCase()}
-async function connect(codeValue,create=false){if(!uid)throw Error('로그인 중입니다. 잠시 후 다시 시도하세요.');room=codeValue;const rr=roomRef(room);
- if(create){if((await getDoc(rr)).exists())throw Error('방 코드가 중복됐습니다. 다시 시도하세요.');await setDoc(rr,{name:$('mpRoomName').value.trim().slice(0,24)||`${cleanName()}의 경마방`,host:uid,horseCount:Number($('mpHorseCount').value),phase:'lobby',createdAt:Date.now(),users:{}})}
- const snap=await getDoc(rr);if(!snap.exists())throw Error('해당 방을 찾을 수 없습니다.');if(!create&&snap.data().phase!=='lobby'&&!snap.data().users?.[uid])throw Error('이미 경기가 시작된 방입니다.');
- isHost=create||snap.data().host===uid;window.__horseRoomActive=true;
+
+async function connect(codeValue,create=false){
+ if(!uid)throw Error('로그인 중입니다. 잠시 후 다시 시도하세요.');
+ room=codeValue;const rr=roomRef(room);
+ if(create){
+  if((await getDoc(rr)).exists())throw Error('방 코드가 중복됐습니다. 다시 시도하세요.');
+  await setDoc(rr,{name:$('mpRoomName').value.trim().slice(0,24)||`${cleanName()}의 경마방`,host:uid,horseCount:Number($('mpHorseCount').value),phase:'lobby',createdAt:Date.now(),users:{}});
+ }
+ const snap=await getDoc(rr);
+ if(!snap.exists())throw Error('해당 방을 찾을 수 없습니다.');
+ if(!create&&snap.data().phase!=='lobby'&&!snap.data().users?.[uid])throw Error('이미 경기가 시작된 방입니다.');
+ 
+ isHost=create||snap.data().host===uid;
+ window.__horseRoomActive=true;
  await updateDoc(rr,{['users.'+uid]:{name:cleanName(),pick:null,skip:false,joinedAt:Date.now()}});
- $('mpRoomCode').textContent=room;$('mpRoomNameDisplay').textContent=snap.data().name||'경마방';$('mpHorseSetting').hidden=!isHost;$('mpStart').hidden=!isHost;roomBox.hidden=false;
- unsubscribe?.();unsubscribe=onSnapshot(rr,s=>{roomData=s.exists()?s.data():null;if(!roomData){msg.textContent='방장이 방을 종료했습니다.';roomBox.hidden=true;return}render()},e=>{msg.textContent='방 동기화 오류: '+e.message});msg.textContent='';
+ $('mpRoomCode').textContent=room;
+ $('mpRoomNameDisplay').textContent=snap.data().name||'경마방';
+ $('mpHorseSetting').hidden=!isHost;
+ roomBox.hidden=false;
+ 
+ unsubscribe?.();
+ unsubscribe=onSnapshot(rr,s=>{
+  roomData=s.exists()?s.data():null;
+  if(!roomData){msg.textContent='방장이 방을 종료했습니다.';roomBox.hidden=true;return}
+  render();
+ },e=>{msg.textContent='방 동기화 오류: '+e.message});
+ msg.textContent='';
 }
-function render(){if(!roomData)return;const users=roomData.users||{},players=Object.entries(users);playerColors=new Map();
+
+// 마지막 사용자의 선택이 완료되었는지 확인하고 자동 3초 후 시작을 트리거하는 함수
+async function checkAndAutoStart(){
+ if(!roomData||roomData.phase!=='lobby')return;
+ const users=roomData.users||{}, players=Object.values(users);
+ if(players.length===0)return;
+ 
+ const allDone=players.every(u=>u.skip||u.pick);
+ if(allDone){
+  try{
+   await runTransaction(db, async tx=>{
+    const snap=await tx.get(roomRef(room));
+    if(!snap.exists())return;
+    const data=snap.data();
+    if(data.phase==='lobby'){
+     tx.update(roomRef(room),{
+      phase:'countdown',
+      startedAt:Date.now()+3000, // 정확히 3초 후 출발
+      raceSeed:Math.floor(Math.random()*0x7fffffff),
+      results:null
+     });
+    }
+   });
+  }catch(e){
+   console.error('자동 시작 트랜잭션 실패:', e);
+  }
+ }
+}
+
+function render(){
+ if(!roomData)return;
+ const users=roomData.users||{},players=Object.entries(users);
+ playerColors=new Map();
  [...players].sort(([a],[b])=>a.localeCompare(b)).forEach(([id],i)=>playerColors.set(id,`hsl(${Math.round((i*137.508)%360)} 78% 48%)`));
- $('mpCount').textContent=players.length;$('mpPhase').textContent=({lobby:'말 선택 중',countdown:'출발 준비 중',racing:'경기 진행 중',finished:'경기 종료'})[roomData.phase]||'대기 중';$('mpHorseCount').value=roomData.horseCount||5;
- if(window.raceApi&&window.raceApi.getHorseCount()!==(Number(roomData.horseCount)||5))window.raceApi.setHorseCount(Number(roomData.horseCount)||5);
- $('startBtn').classList.toggle('hidden',Boolean(room));if(roomData.phase==='countdown'&&lastPhase!=='countdown')window.raceApi?.start(roomData.raceSeed,roomData.startedAt);if(roomData.phase==='finished')window.raceApi?.completeOfficially(roomData.results);lastPhase=roomData.phase;
+ 
+ $('mpCount').textContent=players.length;
+ $('mpPhase').textContent=({lobby:'말 선택 중',countdown:'출발 준비 중',racing:'경기 진행 중',finished:'경기 종료'})[roomData.phase]||'대기 중';
+ $('mpHorseCount').value=roomData.horseCount||5;
+ 
+ if(window.raceApi&&window.raceApi.getHorseCount()!==(Number(roomData.horseCount)||5)) {
+  window.raceApi.setHorseCount(Number(roomData.horseCount)||5);
+ }
+ 
+ $('startBtn').classList.toggle('hidden',Boolean(room));
+ 
+ if(roomData.phase==='countdown'&&lastPhase!=='countdown'){
+  window.raceApi?.start(roomData.raceSeed,roomData.startedAt);
+ }
+ if(roomData.phase==='finished'){
+  window.raceApi?.completeOfficially(roomData.results);
+ }
+ lastPhase=roomData.phase;
+ 
  $('mpPlayers').innerHTML=players.map(([id,u])=>`<span style="display:inline-flex;align-items:center;gap:5px;background:#1e293b;border:1px solid ${playerColors.get(id)};border-radius:8px;padding:5px 8px;margin:2px"><span style="width:9px;height:9px;border-radius:50%;background:${playerColors.get(id)}"></span>${esc(u.name)}${id===roomData.host?' 👑':''} · ${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'말 선택 대기':'미선택'}</span>`).join('');
- $('mpSkip').disabled=roomData.phase!=='lobby';$('mpStart').disabled=roomData.phase!=='lobby'||players.length<1||players.some(([,u])=>!u.skip&&!u.pick);
- $('mpPickHint').textContent=roomData.phase==='lobby'?'트랙에서 원하는 말을 누르세요. 이미 선택된 말은 고를 수 없습니다.':'선택이 마감되었습니다.';$('mpPickRow').style.opacity=roomData.phase==='lobby'?'1':'.6';$('mpResults').textContent='';
+ 
+ $('mpSkip').disabled=roomData.phase!=='lobby';$('mpPickHint').textContent=roomData.phase==='lobby'?'트랙에서 원하는 말을 누르세요. 이미 선택된 말은 고를 수 없습니다.':'선택이 마감되었습니다.';
+ $('mpPickRow').style.opacity=roomData.phase==='lobby'?'1':'.6';$('mpResults').textContent='';
+ 
  if(roomData.phase==='finished'&&roomData.results){
   const order=roomData.results,byHorse=new Map(order.map((r,i)=>[Number(r.horse),i+1]));
   const ranked=players.filter(([,u])=>u.pick&&byHorse.has(Number(u.pick))).map(([id,u])=>({id,name:u.name,pick:Number(u.pick),horseRank:byHorse.get(Number(u.pick))})).sort((a,b)=>a.horseRank-b.horseRank);
-  const rows=ranked.length?ranked.map((u,i)=>`<div class="rounded-lg ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-200 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'} border p-2">${i===0?'🏆 ':''}${i+1}위 ${esc(u.name)}</div>`).join(''):'<div class="text-slate-300">승리한 유저가 없습니다.</div>';
+  const rows=ranked.length?ranked.map((u,i)=>`<div class="rounded-lg ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-200 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'} border p-2">${i===0?'🏆 ':''}${i+1}위 ${esc(u.name)} (${u.pick}번 말 - ${u.horseRank}위)</div>`).join(''):'<div class="text-slate-300">승리한 유저가 없습니다.</div>';
   const markup=`<div class="text-center text-amber-300 font-bold mb-2">유저 최종 순위</div><div class="space-y-1">${rows}</div>`;
-  $('mpResults').innerHTML=markup;$('podiumList').innerHTML=markup;
-  const title=document.querySelector('#resultModal h2');if(title)title.textContent='유저 최종 순위';
+  $('mpResults').innerHTML=markup;
+  $('podiumList').innerHTML=markup;
+  const title=document.querySelector('#resultModal h2');
+  if(title)title.textContent='유저 최종 순위';
   $('resultModal').classList.remove('hidden');$('resultModal').classList.add('flex');
  }
+
+ // 모든 유저 선택 시 자동 3초 출발 체크
+ checkAndAutoStart();
 }
+
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 $('mpCreate').onclick=async()=>{try{const c=code();await connect(c,true)}catch(e){msg.textContent=e.message}};
 $('mpJoin').onclick=async()=>{try{await connect($('mpCode').value.trim().toUpperCase(),false)}catch(e){msg.textContent=e.message}};
-async function chooseHorse(horse){if(!uid||!room||roomData?.phase!=='lobby')return;const rr=roomRef(room),playerId=uid;try{await runTransaction(db,async tx=>{const snap=await tx.get(rr);if(!snap.exists())throw Error('방이 종료되었습니다.');const data=snap.data(),users=data.users||{};if(data.phase!=='lobby')throw Error('선택 시간이 끝났습니다.');const owner=Object.entries(users).find(([id,u])=>id!==playerId&&Number(u.pick)===horse);if(owner)throw Error(`${owner[1].name||'다른 유저'}님이 이미 선택한 말입니다.`);if(!users[playerId])throw Error('방 참가 상태를 확인할 수 없습니다.');tx.update(rr,{['users.'+playerId+'.pick']:horse,['users.'+playerId+'.skip']:false});});msg.textContent=`${horse}번 말을 선택했습니다.`}catch(e){msg.textContent=e.message}}
-canvas.addEventListener('click',e=>{if(!room||roomData?.phase!=='lobby')return;const rect=canvas.getBoundingClientRect(),y=(e.clientY-rect.top)*(canvas.height/rect.height),top=55,bottom=canvas.height-15;if(y<top||y>=bottom)return;const lane=Math.floor((y-top)/((bottom-top)/numHorses));if(lane>=0&&lane<numHorses)chooseHorse(lane+1)});
+
+async function chooseHorse(horse){
+ if(!uid||!room||roomData?.phase!=='lobby')return;
+ const rr=roomRef(room),playerId=uid;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(rr);
+   if(!snap.exists())throw Error('방이 종료되었습니다.');
+   const data=snap.data(),users=data.users||{};
+   if(data.phase!=='lobby')throw Error('선택 시간이 끝났습니다.');
+   const owner=Object.entries(users).find(([id,u])=>id!==playerId&&Number(u.pick)===horse);
+   if(owner)throw Error(`${owner[1].name||'다른 유저'}님이 이미 선택한 말입니다.`);
+   if(!users[playerId])throw Error('방 참가 상태를 확인할 수 없습니다.');
+   tx.update(rr,{['users.'+playerId+'.pick']:horse,['users.'+playerId+'.skip']:false});
+  });
+  msg.textContent=`${horse}번 말을 선택했습니다.`;
+ }catch(e){msg.textContent=e.message}
+}
+
+canvas.addEventListener('click',e=>{
+ if(!room||roomData?.phase!=='lobby')return;
+ const rect=canvas.getBoundingClientRect(),y=(e.clientY-rect.top)*(canvas.height/rect.height),top=55,bottom=canvas.height-15;
+ if(y<top||y>=bottom)return;
+ const lane=Math.floor((y-top)/((bottom-top)/numHorses));
+ if(lane>=0&&lane<numHorses)chooseHorse(lane+1)
+});
 canvas.style.cursor='pointer';
-$('mpSkip').onclick=async()=>{if(!uid||!room)return;const rr=roomRef(room),playerId=uid;try{await runTransaction(db,async tx=>{const snap=await tx.get(rr);if(!snap.exists()||snap.data().phase!=='lobby')throw Error('선택 시간이 끝났습니다.');tx.update(rr,{['users.'+playerId+'.pick']:null,['users.'+playerId+'.skip']:true})});msg.textContent='이번 경기를 건너뜁니다.'}catch(e){msg.textContent=e.message}};
+
+$('mpSkip').onclick=async()=>{
+ if(!uid||!room)return;
+ const rr=roomRef(room),playerId=uid;
+ try{
+  await runTransaction(db,async tx=>{
+   const snap=await tx.get(rr);
+   if(!snap.exists()||snap.data().phase!=='lobby')throw Error('선택 시간이 끝났습니다.');
+   tx.update(rr,{['users.'+playerId+'.pick']:null,['users.'+playerId+'.skip']:true})
+  });
+  msg.textContent='이번 경기를 건너뜁니다.';
+ }catch(e){msg.textContent=e.message}
+};
+
 $('mpHorseCount').onchange=()=>isHost&&roomData?.phase==='lobby'&&updateDoc(roomRef(room),{horseCount:Number($('mpHorseCount').value)});
-$('mpStart').onclick=async()=>{if(!isHost||!roomData)return;const users=roomData.users||{};if(Object.values(users).some(u=>!u.skip&&!u.pick)){msg.textContent='모든 참가자가 선택하거나 건너뛰어야 시작할 수 있습니다.';return}await updateDoc(roomRef(room),{phase:'countdown',startedAt:Date.now()+3000,raceSeed:Math.floor(Math.random()*0x7fffffff),results:null})};
-$('mpLeave').onclick=async()=>{if(room&&uid){if(isHost)await deleteDoc(roomRef(room));else await updateDoc(roomRef(room),{['users.'+uid]:deleteField()})}unsubscribe?.();unsubscribe=null;room='';roomData=null;window.__horseRoomActive=false;roomBox.hidden=true;msg.textContent='방에서 나왔습니다.'};
-window.addEventListener('horse-race-finished',async e=>{if(isHost&&room&&roomData?.phase==='countdown'){const results=e.detail.map(x=>({horse:x.id,time:x.time}));await updateDoc(roomRef(room),{phase:'finished',results,finishedAt:Date.now()})}});
+
+$('mpLeave').onclick=async()=>{
+ if(room&&uid){
+  if(isHost)await deleteDoc(roomRef(room));
+  else await updateDoc(roomRef(room),{['users.'+uid]:deleteField()})
+ }
+ unsubscribe?.();
+ unsubscribe=null;
+ room='';roomData=null;
+ window.__horseRoomActive=false;
+ roomBox.hidden=true;
+ msg.textContent='방에서 나왔습니다.'
+};
+
+window.addEventListener('horse-race-finished',async e=>{
+ if(isHost&&room&&roomData?.phase==='countdown'){
+  const results=e.detail.map(x=>({horse:x.id,time:x.time}));
+  await updateDoc(roomRef(room),{phase:'finished',results,finishedAt:Date.now()});
+ }
+});
 </script>
 </body>
 </html>
