@@ -27,6 +27,26 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
  </div>
 </header>
 
+
+<section id="multiPanel" style="font:14px 'Noto Sans KR',sans-serif;background:#0f172a;color:#f8fafc;border:1px solid #475569;border-radius:14px;padding:12px;margin:8px;">
+ <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <b style="color:#fbbf24">멀티 경마</b><input id="mpName" maxlength="16" placeholder="닉네임" style="width:110px;padding:7px;background:#020617;color:white;border:1px solid #475569;border-radius:8px">
+  <button id="mpCreate">방 만들기</button><input id="mpCode" maxlength="6" placeholder="방 코드" style="width:90px;padding:7px;text-transform:uppercase;background:#020617;color:white;border:1px solid #475569;border-radius:8px">
+  <button id="mpJoin">참가</button><span id="mpMessage" style="color:#cbd5e1"></span>
+ </div>
+ <div id="mpRoom" hidden style="margin-top:10px;padding-top:10px;border-top:1px solid #334155">
+  <div>방 <b id="mpRoomCode" style="color:#fbbf24"></b> · <span id="mpPhase"></span> · 참가자 <span id="mpCount"></span></div>
+  <div id="mpPlayers" style="margin:7px 0"></div>
+  <div id="mpPickRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+   <label>내 말 <select id="mpPick" style="background:#020617;color:#fbbf24;padding:6px;border-radius:6px"></select></label>
+   <button id="mpSkip">선택 건너뛰기</button>
+   <label id="mpHorseSetting" hidden>말 수 <select id="mpHorseCount" style="background:#020617;color:#fbbf24;padding:6px;border-radius:6px"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+   <button id="mpReady">선택 확정</button><button id="mpStart" hidden>경기 시작</button><button id="mpLeave">나가기</button>
+  </div>
+  <div id="mpResults" style="margin-top:8px;color:#fbbf24"></div>
+ </div>
+</section>
+
 <main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-1.5 my-1 min-h-0">
  <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden h-[260px] sm:h-[340px] lg:h-[calc(100vh-70px)] min-h-[250px]">
   <div class="relative w-full flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-slate-950 rounded-lg">
@@ -317,7 +337,7 @@ function animate(now){
   elapsedTime=(now-raceStartTime)/1000;raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;
   if(finishOrder.length===horses.length){isFinished=true;isRacing=false;relWake();playFanfare();
    liveStatusBadge.textContent="경기 종료";liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
-   gameStatusText.innerHTML=`🏆 경주 종료! 우승마: <b class="text-amber-400">${finishOrder[0].col.name}</b>`;setTimeout(showResult,400)}
+   gameStatusText.innerHTML=`🏆 경주 종료! 우승마: <b class="text-amber-400">${finishOrder[0].col.name}</b>`;window.dispatchEvent(new CustomEvent('horse-race-finished',{detail:finishOrder.map(h=>({id:h.id,time:h.finishTime}))}));setTimeout(showResult,400)}
  }
  ctx.clearRect(0,0,canvas.width,canvas.height);drawTrack();drawParticles(dt);
  [...horses].sort((a,b)=>a.y-b.y).forEach(h=>{h.update(dt,canvas.width);h.draw(ctx)});
@@ -325,12 +345,50 @@ function animate(now){
  requestAnimationFrame(animate);
 }
 
+window.raceApi={start:startRace,getHorseCount:()=>numHorses,setHorseCount:n=>{numHorses=n;horseCountSelect.value=String(n);createHorses();resetGame()}};
 startBtn.addEventListener('click',startRace);
 $('resetBtn').addEventListener('click',resetGame);
 $('modalRestartBtn').addEventListener('click',resetGame);
 horseCountSelect.addEventListener('change',e=>{numHorses=parseInt(e.target.value,10);createHorses();resetGame()});
 horseScaleRange.addEventListener('input',e=>{const v=parseInt(e.target.value,10);horseScale=v/100;$('horseScaleVal').textContent=v+'%'});
 window.addEventListener('load',()=>{createHorses();resizeCanvas();updateLeaderboard();requestAnimationFrame(animate)});
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, set, update, onValue, runTransaction, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+const firebaseConfig={apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxHq_qymqY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843",databaseURL:"https://stock-game-768-default-rtdb.firebaseio.com"};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getDatabase(app),$=id=>document.getElementById(id);
+const msg=$('mpMessage'),roomBox=$('mpRoom');let uid='',room='',roomData=null,unsubscribe=null,isHost=false;
+const buttonStyle='padding:7px 10px;border:1px solid #64748b;border-radius:8px;background:#1e293b;color:#f8fafc;font-weight:bold;cursor:pointer';
+document.querySelectorAll('#multiPanel button').forEach(b=>b.style.cssText=buttonStyle);
+signInAnonymously(auth).then(c=>{uid=c.user.uid;msg.textContent='온라인 · 닉네임을 입력해 방을 만들거나 참가하세요.'}).catch(e=>msg.textContent='Firebase 로그인 오류: '+e.message);
+function cleanName(){return $('mpName').value.trim().slice(0,16)||'게스트'}
+function code(){return Math.random().toString(36).slice(2,8).toUpperCase()}
+async function connect(codeValue,create=false){if(!uid)throw Error('로그인 중입니다. 잠시 후 다시 시도하세요.');room=codeValue;const rr=ref(db,'rooms/'+room);
+ if(create){const result=await runTransaction(rr,current=>current===null?{host:uid,horseCount:Number($('mpHorseCount').value),phase:'lobby',createdAt:Date.now(),users:{}}:undefined);if(!result.committed)throw Error('방 코드 생성에 실패했습니다. 다시 시도하세요.');}
+ const snap=await new Promise((resolve,reject)=>{const stop=onValue(rr,s=>{stop();resolve(s)},reject)});if(!snap.exists())throw Error('해당 방을 찾을 수 없습니다.');
+ isHost=create||snap.val().host===uid;
+ await set(ref(db,`rooms/${room}/users/${uid}`),{name:cleanName(),pick:null,skip:false,joinedAt:Date.now()});
+ $('mpRoomCode').textContent=room;$('mpHorseSetting').hidden=!isHost;$('mpStart').hidden=!isHost;roomBox.hidden=false;
+ unsubscribe?.();unsubscribe=onValue(rr,s=>{roomData=s.val();render()});msg.textContent='';
+}
+function render(){if(!roomData)return;const users=roomData.users||{},players=Object.entries(users);$('mpCount').textContent=players.length;$('mpPhase').textContent=({lobby:'말 선택 중',racing:'경기 진행 중',finished:'경기 종료'})[roomData.phase]||'대기 중';$('mpHorseCount').value=roomData.horseCount||5;
+ $('mpPlayers').innerHTML=players.map(([id,u])=>`<span style="display:inline-block;background:#1e293b;border-radius:8px;padding:5px 8px;margin:2px">${esc(u.name)}${id===roomData.host?' 👑':''} · ${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'선택 대기':'미선택'}</span>`).join('');
+ const n=Number(roomData.horseCount)||5;$('mpPick').innerHTML=Array.from({length:n},(_,i)=>`<option value="${i+1}">${i+1}번 말</option>`).join('');$('mpReady').disabled=roomData.phase!=='lobby';$('mpSkip').disabled=roomData.phase!=='lobby';$('mpStart').disabled=roomData.phase!=='lobby'||players.length<1||players.some(([,u])=>!u.skip&&!u.pick);
+ $('mpPickRow').style.opacity=roomData.phase==='lobby'?'1':'.6';$('mpResults').textContent='';
+ if(roomData.phase==='finished'&&roomData.results){const order=roomData.results;const byId=new Map(order.map((r,i)=>[r.horse,i+1]));const ranked=players.filter(([,u])=>u.pick).map(([id,u])=>({id,name:u.name,pick:u.pick,rank:byId.get(u.pick)||999})).sort((a,b)=>a.rank-b.rank);const winner=ranked[0];$('mpResults').innerHTML=`🏆 승리: ${winner?esc(winner.name)+' · '+winner.rank+'위 말 선택':'선택한 유저 없음'}<br>`+ranked.map((u,i)=>`${i+1}위 ${esc(u.name)} — ${u.pick}번 말 (${u.rank}위)`).join('<br>');}
+}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+$('mpCreate').onclick=async()=>{try{const c=code();await connect(c,true)}catch(e){msg.textContent=e.message}};
+$('mpJoin').onclick=async()=>{try{await connect($('mpCode').value.trim().toUpperCase(),false)}catch(e){msg.textContent=e.message}};
+$('mpReady').onclick=()=>update(ref(db,`rooms/${room}/users/${uid}`),{pick:Number($('mpPick').value),skip:false});
+$('mpSkip').onclick=()=>update(ref(db,`rooms/${room}/users/${uid}`),{pick:null,skip:true});
+$('mpHorseCount').onchange=()=>isHost&&roomData?.phase==='lobby'&&update(ref(db,'rooms/'+room),{horseCount:Number($('mpHorseCount').value)});
+$('mpStart').onclick=async()=>{if(!isHost||!roomData)return;const users=roomData.users||{};if(Object.values(users).some(u=>!u.skip&&!u.pick)){msg.textContent='모든 참가자가 선택하거나 건너뛰어야 시작할 수 있습니다.';return}await update(ref(db,'rooms/'+room),{phase:'racing',startedAt:Date.now(),results:null});window.raceApi?.start();};
+$('mpLeave').onclick=async()=>{if(room&&uid)await remove(ref(db,`rooms/${room}/users/${uid}`));unsubscribe?.();unsubscribe=null;room='';roomData=null;roomBox.hidden=true;msg.textContent='방에서 나왔습니다.'};
+// Every client animates locally; the host publishes the official finish order once.
+window.addEventListener('horse-race-finished',async e=>{if(isHost&&room&&roomData?.phase==='racing'){const results=e.detail.map(x=>x.id);await update(ref(db,'rooms/'+room),{phase:'finished',results,finishedAt:Date.now()})}});
 </script>
 </body>
 </html>
