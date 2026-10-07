@@ -382,7 +382,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.g
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const appId=typeof __app_id!=='undefined'?__app_id:'penalty-shootout-app';
-const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebase_config):{apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxqHt_qymqY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843"};
+const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebase_config):{apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxqHt_qymY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const roomRef=id=>doc(db,'artifacts',appId,'public','data','horse_rooms',id);
 
