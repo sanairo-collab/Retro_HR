@@ -121,7 +121,6 @@ function leg(c,hx,hy,p,front,col,w){
  c.lineWidth=w*.5;c.strokeStyle="#161010";c.beginPath();c.moveTo(fx,fy);c.lineTo(hfx,hfy);c.stroke();
 }
 
-// 결정론적 무작위 알고리즘 (모든 장치에서 동일한 레이스 결과 보장)
 function raceRandom(seed,horseId,slot){
  let x=(Number(seed)^Math.imul(horseId,0x9e3779b1)^Math.imul(slot+1,0x85ebca6b))>>>0;
  x=Math.imul(x^(x>>>16),0x7feb352d);x=Math.imul(x^(x>>>15),0x846ca68b);x^=x>>>16;
@@ -387,7 +386,7 @@ const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebas
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const roomRef=id=>doc(db,'artifacts',appId,'public','data','horse_rooms',id);
 
-let uid='',room='',roomData=null,unsubscribe=null,isHost=false,lastPhase='',playerColors=new Map();
+const msg=$('mpMessage'),roomBox=$('mpRoom');let uid='',room='',roomData=null,unsubscribe=null,isHost=false,lastPhase='',playerColors=new Map();
 window.__horseRoomActive=false;
 window.horsePickState=()=>({users:roomData?.users||{},colors:Object.fromEntries(playerColors)});
 
@@ -411,35 +410,70 @@ initAuth();
 function cleanName(){return $('mpName').value.trim().slice(0,16)||'게스트'}
 function code(){return Math.random().toString(36).slice(2,8).toUpperCase()}
 
-async function connect(codeValue,create=false){
- if(!uid)throw Error('로그인 중입니다. 잠시 후 다시 시도하세요.');
- room=codeValue;const rr=roomRef(room);
+async function connect(codeValue, create=false){
+ if(!uid) throw Error('로그인 중입니다. 1~2초 후 다시 시도하세요.');
+ room = codeValue.trim().toUpperCase();
+ if(!room) throw Error('방 코드를 입력해주세요.');
+ const rr = roomRef(room);
+
  if(create){
-  if((await getDoc(rr)).exists())throw Error('방 코드가 중복됐습니다. 다시 시도하세요.');
-  await setDoc(rr,{name:$('mpRoomName').value.trim().slice(0,24)||`${cleanName()}의 경마방`,host:uid,horseCount:Number($('mpHorseCount').value),phase:'lobby',createdAt:Date.now(),users:{}});
+  const checkSnap = await getDoc(rr);
+  if(checkSnap.exists()) throw Error('이미 존재하는 방 코드입니다. 다시 시도하세요.');
+  await setDoc(rr, {
+   name: $('mpRoomName').value.trim().slice(0,24) || `${cleanName()}의 경마방`,
+   host: uid,
+   horseCount: Number($('mpHorseCount').value),
+   phase: 'lobby',
+   createdAt: Date.now(),
+   users: {}
+  });
  }
- const snap=await getDoc(rr);
- if(!snap.exists())throw Error('해당 방을 찾을 수 없습니다.');
- if(!create&&snap.data().phase!=='lobby'&&!snap.data().users?.[uid])throw Error('이미 경기가 시작된 방입니다.');
+
+ const snap = await getDoc(rr);
+ if(!snap.exists()) throw Error(`방 코드 [${room}]을 찾을 수 없습니다.`);
  
- isHost=create||snap.data().host===uid;
- window.__horseRoomActive=true;
- await updateDoc(rr,{['users.'+uid]:{name:cleanName(),pick:null,skip:false,joinedAt:Date.now()}});
- $('mpRoomCode').textContent=room;
- $('mpRoomNameDisplay').textContent=snap.data().name||'경마방';
- $('mpHorseSetting').hidden=!isHost;
- roomBox.hidden=false;
- 
+ const data = snap.data();
+ if(!create && data.phase !== 'lobby' && !data.users?.[uid]){
+  throw Error('이미 경기가 시작된 방입니다.');
+ }
+
+ isHost = create || data.host === uid;
+ window.__horseRoomActive = true;
+
+ // 💡 updateDoc 대신 setDoc merge를 사용하여 신규 참가 오류 수정
+ await setDoc(rr, {
+  users: {
+   [uid]: {
+    name: cleanName(),
+    pick: null,
+    skip: false,
+    joinedAt: Date.now()
+   }
+  }
+ }, { merge: true });
+
+ $('mpRoomCode').textContent = room;
+ $('mpRoomNameDisplay').textContent = data.name || '경마방';
+ $('mpHorseSetting').hidden = !isHost;
+ roomBox.hidden = false;
+
  unsubscribe?.();
- unsubscribe=onSnapshot(rr,s=>{
-  roomData=s.exists()?s.data():null;
-  if(!roomData){msg.textContent='방장이 방을 종료했습니다.';roomBox.hidden=true;return}
+ unsubscribe = onSnapshot(rr, s => {
+  roomData = s.exists() ? s.data() : null;
+  if(!roomData){
+   msg.textContent = '방장이 방을 종료했습니다.';
+   roomBox.hidden = true;
+   return;
+  }
   render();
- },e=>{msg.textContent='방 동기화 오류: '+e.message});
- msg.textContent='';
+ }, e => {
+  console.error('onSnapshot Error:', e);
+  msg.textContent = '방 동기화 오류: ' + e.message;
+ });
+ msg.textContent = '';
 }
 
-// 마지막 사용자의 선택이 완료되었는지 확인하고 자동 3초 후 시작을 트리거하는 함수
+// 모든 참가자의 선택이 끝나면 3초 카운트다운 출발 트리거
 async function checkAndAutoStart(){
  if(!roomData||roomData.phase!=='lobby')return;
  const users=roomData.users||{}, players=Object.values(users);
@@ -455,7 +489,7 @@ async function checkAndAutoStart(){
     if(data.phase==='lobby'){
      tx.update(roomRef(room),{
       phase:'countdown',
-      startedAt:Date.now()+3000, // 정확히 3초 후 출발
+      startedAt:Date.now()+3000,
       raceSeed:Math.floor(Math.random()*0x7fffffff),
       results:null
      });
@@ -508,7 +542,6 @@ function render(){
   $('resultModal').classList.remove('hidden');$('resultModal').classList.add('flex');
  }
 
- // 모든 유저 선택 시 자동 3초 출발 체크
  checkAndAutoStart();
 }
 
