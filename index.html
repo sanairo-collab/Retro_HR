@@ -38,10 +38,10 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
   <div>방 <b id="mpRoomCode" style="color:#fbbf24"></b> · <span id="mpPhase"></span> · 참가자 <span id="mpCount"></span></div>
   <div id="mpPlayers" style="margin:7px 0"></div>
   <div id="mpPickRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-   <label>내 말 <select id="mpPick" style="background:#020617;color:#fbbf24;padding:6px;border-radius:6px"></select></label>
+   <span id="mpPickHint" style="color:#cbd5e1">트랙에서 원하는 말을 눌러 선택하세요.</span>
    <button id="mpSkip">선택 건너뛰기</button>
    <label id="mpHorseSetting" hidden>말 수 <select id="mpHorseCount" style="background:#020617;color:#fbbf24;padding:6px;border-radius:6px"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
-   <button id="mpReady">선택 확정</button><button id="mpStart" hidden>경기 시작</button><button id="mpLeave">나가기</button>
+   <button id="mpStart" hidden>경기 시작</button><button id="mpLeave">나가기</button>
   </div>
   <div id="mpResults" style="margin-top:8px;color:#fbbf24"></div>
  </div>
@@ -100,7 +100,7 @@ async function reqWake(){try{if('wakeLock'in navigator)wakeLock=await navigator.
 function relWake(){if(wakeLock){wakeLock.release().then(()=>wakeLock=null).catch(()=>{})}}
 
 let numHorses=5,horseScale=.85,horses=[],particles=[],isRacing=false,isFinished=false,raceStartTime=0,elapsedTime=0,finishOrder=[];
-const PAD_L=60,PAD_R=75;let finishLineX=0;
+const PAD_L=125,PAD_R=75;let finishLineX=0;
 
 // Clean, minimal dust effects
 function dust(x,y,color='#64748b',n=1){
@@ -289,6 +289,18 @@ function drawTrack(){
  ctx.setLineDash([]);
  
  ctx.strokeStyle="#fff";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(PAD_L,top);ctx.lineTo(PAD_L,bot);ctx.stroke();
+ const picks=window.horsePickState?.()||{};
+ for(const [playerId,user] of Object.entries(picks.users||{})){
+  if(!user.pick)continue;
+  const lane=Number(user.pick)-1;if(lane<0||lane>=numHorses)continue;
+  const label=String(user.name||'플레이어');const color=picks.colors?.[playerId]||'#38bdf8';
+  ctx.font='bold 11px Noto Sans KR, sans-serif';
+  let shown=label;while(shown.length>2&&ctx.measureText(shown).width>74)shown=shown.slice(0,-1);
+  if(shown!==label)shown+='…';
+  const w=Math.min(82,Math.ceil(ctx.measureText(shown).width)+12),cy=top+lh*(lane+.5);
+  ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(4,cy-10,w,20,6);ctx.fill();
+  ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(shown,4+w/2,cy);
+ }
  const fx=finishLineX,s=6;
  for(let y=top;y<bot;y+=s*2){
   ctx.fillStyle="#fff";ctx.fillRect(fx-s,y,s,s);ctx.fillRect(fx,y+s,s,s);
@@ -354,41 +366,63 @@ horseScaleRange.addEventListener('input',e=>{const v=parseInt(e.target.value,10)
 window.addEventListener('load',()=>{createHorses();resizeCanvas();updateLeaderboard();requestAnimationFrame(animate)});
 </script>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getDatabase, ref, set, update, onValue, runTransaction, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-const firebaseConfig={apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxHq_qymqY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843",databaseURL:"https://stock-game-768-default-rtdb.firebaseio.com"};
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getDatabase(app),$=id=>document.getElementById(id);
-const msg=$('mpMessage'),roomBox=$('mpRoom');let uid='',room='',roomData=null,unsubscribe=null,isHost=false;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+const appId=typeof __app_id!=='undefined'?__app_id:'penalty-shootout-app';
+const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebase_config):{apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxqHt_qymY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843"};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
+const roomRef=id=>doc(db,'artifacts',appId,'public','data','horse_rooms',id);
+const msg=$('mpMessage'),roomBox=$('mpRoom');let uid='',room='',roomData=null,unsubscribe=null,isHost=false,lastPhase='',playerColors=new Map();
+window.horsePickState=()=>({users:roomData?.users||{},colors:Object.fromEntries(playerColors)});
 const buttonStyle='padding:7px 10px;border:1px solid #64748b;border-radius:8px;background:#1e293b;color:#f8fafc;font-weight:bold;cursor:pointer';
 document.querySelectorAll('#multiPanel button').forEach(b=>b.style.cssText=buttonStyle);
-signInAnonymously(auth).then(c=>{uid=c.user.uid;msg.textContent='온라인 · 닉네임을 입력해 방을 만들거나 참가하세요.'}).catch(e=>msg.textContent='Firebase 로그인 오류: '+e.message);
+async function initAuth(){try{let cred;if(typeof __initial_auth_token!=="undefined"&&__initial_auth_token)cred=await signInWithCustomToken(auth,__initial_auth_token);else cred=await signInAnonymously(auth);uid=cred.user.uid;msg.textContent='온라인 · 닉네임을 입력해 방을 만들거나 참가하세요.'}catch(e){console.error('Firebase auth init error',e);msg.textContent=`Firebase 로그인 오류 (${e.code||'unknown'}): ${e.message}`}}
+initAuth();
 function cleanName(){return $('mpName').value.trim().slice(0,16)||'게스트'}
 function code(){return Math.random().toString(36).slice(2,8).toUpperCase()}
-async function connect(codeValue,create=false){if(!uid)throw Error('로그인 중입니다. 잠시 후 다시 시도하세요.');room=codeValue;const rr=ref(db,'rooms/'+room);
- if(create){const result=await runTransaction(rr,current=>current===null?{host:uid,horseCount:Number($('mpHorseCount').value),phase:'lobby',createdAt:Date.now(),users:{}}:undefined);if(!result.committed)throw Error('방 코드 생성에 실패했습니다. 다시 시도하세요.');}
- const snap=await new Promise((resolve,reject)=>{const stop=onValue(rr,s=>{stop();resolve(s)},reject)});if(!snap.exists())throw Error('해당 방을 찾을 수 없습니다.');
- isHost=create||snap.val().host===uid;
- await set(ref(db,`rooms/${room}/users/${uid}`),{name:cleanName(),pick:null,skip:false,joinedAt:Date.now()});
+async function connect(codeValue,create=false){if(!uid)throw Error('로그인 중입니다. 잠시 후 다시 시도하세요.');room=codeValue;const rr=roomRef(room);
+ if(create){if((await getDoc(rr)).exists())throw Error('방 코드가 중복됐습니다. 다시 시도하세요.');await setDoc(rr,{host:uid,horseCount:Number($('mpHorseCount').value),phase:'lobby',createdAt:Date.now(),users:{}})}
+ const snap=await getDoc(rr);if(!snap.exists())throw Error('해당 방을 찾을 수 없습니다.');if(!create&&snap.data().phase!=='lobby')throw Error('이미 경기가 시작된 방입니다.');
+ isHost=create||snap.data().host===uid;
+ await updateDoc(rr,{['users.'+uid]:{name:cleanName(),pick:null,skip:false,joinedAt:Date.now()}});
  $('mpRoomCode').textContent=room;$('mpHorseSetting').hidden=!isHost;$('mpStart').hidden=!isHost;roomBox.hidden=false;
- unsubscribe?.();unsubscribe=onValue(rr,s=>{roomData=s.val();render()});msg.textContent='';
+ unsubscribe?.();unsubscribe=onSnapshot(rr,s=>{roomData=s.exists()?s.data():null;if(!roomData){msg.textContent='방장이 방을 종료했습니다.';roomBox.hidden=true;return}render()},e=>{msg.textContent='방 동기화 오류: '+e.message});msg.textContent='';
 }
-function render(){if(!roomData)return;const users=roomData.users||{},players=Object.entries(users);$('mpCount').textContent=players.length;$('mpPhase').textContent=({lobby:'말 선택 중',racing:'경기 진행 중',finished:'경기 종료'})[roomData.phase]||'대기 중';$('mpHorseCount').value=roomData.horseCount||5;
- $('mpPlayers').innerHTML=players.map(([id,u])=>`<span style="display:inline-block;background:#1e293b;border-radius:8px;padding:5px 8px;margin:2px">${esc(u.name)}${id===roomData.host?' 👑':''} · ${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'선택 대기':'미선택'}</span>`).join('');
- const n=Number(roomData.horseCount)||5;$('mpPick').innerHTML=Array.from({length:n},(_,i)=>`<option value="${i+1}">${i+1}번 말</option>`).join('');$('mpReady').disabled=roomData.phase!=='lobby';$('mpSkip').disabled=roomData.phase!=='lobby';$('mpStart').disabled=roomData.phase!=='lobby'||players.length<1||players.some(([,u])=>!u.skip&&!u.pick);
- $('mpPickRow').style.opacity=roomData.phase==='lobby'?'1':'.6';$('mpResults').textContent='';
- if(roomData.phase==='finished'&&roomData.results){const order=roomData.results;const byId=new Map(order.map((r,i)=>[r.horse,i+1]));const ranked=players.filter(([,u])=>u.pick).map(([id,u])=>({id,name:u.name,pick:u.pick,rank:byId.get(u.pick)||999})).sort((a,b)=>a.rank-b.rank);const winner=ranked[0];$('mpResults').innerHTML=`🏆 승리: ${winner?esc(winner.name)+' · '+winner.rank+'위 말 선택':'선택한 유저 없음'}<br>`+ranked.map((u,i)=>`${i+1}위 ${esc(u.name)} — ${u.pick}번 말 (${u.rank}위)`).join('<br>');}
+function render(){if(!roomData)return;const users=roomData.users||{},players=Object.entries(users);playerColors=new Map();
+ [...players].sort(([a],[b])=>a.localeCompare(b)).forEach(([id],i)=>playerColors.set(id,`hsl(${Math.round((i*137.508)%360)} 78% 48%)`));
+ $('mpCount').textContent=players.length;$('mpPhase').textContent=({lobby:'말 선택 중',racing:'경기 진행 중',finished:'경기 종료'})[roomData.phase]||'대기 중';$('mpHorseCount').value=roomData.horseCount||5;
+ if(window.raceApi&&window.raceApi.getHorseCount()!==(Number(roomData.horseCount)||5))window.raceApi.setHorseCount(Number(roomData.horseCount)||5);
+ $('startBtn').classList.toggle('hidden',Boolean(room));if(roomData.phase==='racing'&&lastPhase!=='racing')window.raceApi?.start();lastPhase=roomData.phase;
+ $('mpPlayers').innerHTML=players.map(([id,u])=>`<span style="display:inline-flex;align-items:center;gap:5px;background:#1e293b;border:1px solid ${playerColors.get(id)};border-radius:8px;padding:5px 8px;margin:2px"><span style="width:9px;height:9px;border-radius:50%;background:${playerColors.get(id)}"></span>${esc(u.name)}${id===roomData.host?' 👑':''} · ${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'말 선택 대기':'미선택'}</span>`).join('');
+ $('mpSkip').disabled=roomData.phase!=='lobby';$('mpStart').disabled=roomData.phase!=='lobby'||players.length<1||players.some(([,u])=>!u.skip&&!u.pick);
+ $('mpPickHint').textContent=roomData.phase==='lobby'?'트랙에서 원하는 말을 누르세요. 이미 선택된 말은 고를 수 없습니다.':'선택이 마감되었습니다.';$('mpPickRow').style.opacity=roomData.phase==='lobby'?'1':'.6';$('mpResults').textContent='';
+ if(roomData.phase==='finished'&&roomData.results){
+  const order=roomData.results,byHorse=new Map(order.map((r,i)=>[Number(r.horse),i+1]));
+  const ranked=players.filter(([,u])=>u.pick&&byHorse.has(Number(u.pick))).map(([id,u])=>({id,name:u.name,pick:Number(u.pick),horseRank:byHorse.get(Number(u.pick))})).sort((a,b)=>a.horseRank-b.horseRank);
+  const skipped=players.filter(([,u])=>u.skip||!u.pick).map(([,u])=>esc(u.name));
+  let rows='';
+  if(ranked.length===1)rows=`<div class="rounded-lg bg-amber-500/15 border border-amber-500/40 p-2 text-amber-200 font-extrabold">${esc(ranked[0].name)} — ${ranked[0].horseRank}위</div>`;
+  else if(ranked.length>1)rows=ranked.map((u,i)=>`<div class="flex items-center justify-between rounded-lg ${i===0?'bg-amber-500/15 border-amber-500/40 text-amber-200':'bg-slate-950/70 border-slate-800 text-slate-200'} border p-2"><span>${i+1}위 ${esc(u.name)}</span><span class="text-xs">${u.pick}번 말 · 경주 ${u.horseRank}위</span></div>`).join('');
+  else rows='<div class="text-slate-300">선택한 유저가 없습니다.</div>';
+  const skippedLine=skipped.length?`<div class="mt-2 text-xs text-slate-400">건너뜀 · ${skipped.join(', ')} (순위 없음)</div>`:'';
+  const markup=`<div class="text-center text-amber-300 font-bold mb-2">유저 최종 순위</div><div class="space-y-1">${rows}</div>${skippedLine}`;
+  $('mpResults').innerHTML=markup;$('podiumList').innerHTML=markup;
+  const title=document.querySelector('#resultModal h2');if(title)title.textContent='유저 최종 순위';
+  $('resultModal').classList.remove('hidden');$('resultModal').classList.add('flex');
+ }
 }
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 $('mpCreate').onclick=async()=>{try{const c=code();await connect(c,true)}catch(e){msg.textContent=e.message}};
 $('mpJoin').onclick=async()=>{try{await connect($('mpCode').value.trim().toUpperCase(),false)}catch(e){msg.textContent=e.message}};
-$('mpReady').onclick=()=>update(ref(db,`rooms/${room}/users/${uid}`),{pick:Number($('mpPick').value),skip:false});
-$('mpSkip').onclick=()=>update(ref(db,`rooms/${room}/users/${uid}`),{pick:null,skip:true});
-$('mpHorseCount').onchange=()=>isHost&&roomData?.phase==='lobby'&&update(ref(db,'rooms/'+room),{horseCount:Number($('mpHorseCount').value)});
-$('mpStart').onclick=async()=>{if(!isHost||!roomData)return;const users=roomData.users||{};if(Object.values(users).some(u=>!u.skip&&!u.pick)){msg.textContent='모든 참가자가 선택하거나 건너뛰어야 시작할 수 있습니다.';return}await update(ref(db,'rooms/'+room),{phase:'racing',startedAt:Date.now(),results:null});window.raceApi?.start();};
-$('mpLeave').onclick=async()=>{if(room&&uid)await remove(ref(db,`rooms/${room}/users/${uid}`));unsubscribe?.();unsubscribe=null;room='';roomData=null;roomBox.hidden=true;msg.textContent='방에서 나왔습니다.'};
-// Every client animates locally; the host publishes the official finish order once.
-window.addEventListener('horse-race-finished',async e=>{if(isHost&&room&&roomData?.phase==='racing'){const results=e.detail.map(x=>x.id);await update(ref(db,'rooms/'+room),{phase:'finished',results,finishedAt:Date.now()})}});
+async function chooseHorse(horse){if(!uid||!room||roomData?.phase!=='lobby')return;const rr=roomRef(room),playerId=uid;try{await runTransaction(db,async tx=>{const snap=await tx.get(rr);if(!snap.exists())throw Error('방이 종료되었습니다.');const data=snap.data(),users=data.users||{};if(data.phase!=='lobby')throw Error('선택 시간이 끝났습니다.');const owner=Object.entries(users).find(([id,u])=>id!==playerId&&Number(u.pick)===horse);if(owner)throw Error(`${owner[1].name||'다른 유저'}님이 이미 선택한 말입니다.`);if(!users[playerId])throw Error('방 참가 상태를 확인할 수 없습니다.');tx.update(rr,{['users.'+playerId+'.pick']:horse,['users.'+playerId+'.skip']:false});});msg.textContent=`${horse}번 말을 선택했습니다.`}catch(e){msg.textContent=e.message}}
+canvas.addEventListener('click',e=>{if(!room||roomData?.phase!=='lobby')return;const rect=canvas.getBoundingClientRect(),y=(e.clientY-rect.top)*(canvas.height/rect.height),top=55,bottom=canvas.height-15;if(y<top||y>=bottom)return;const lane=Math.floor((y-top)/((bottom-top)/numHorses));if(lane>=0&&lane<numHorses)chooseHorse(lane+1)});
+canvas.style.cursor='pointer';
+$('mpSkip').onclick=async()=>{if(!uid||!room)return;const rr=roomRef(room),playerId=uid;try{await runTransaction(db,async tx=>{const snap=await tx.get(rr);if(!snap.exists()||snap.data().phase!=='lobby')throw Error('선택 시간이 끝났습니다.');tx.update(rr,{['users.'+playerId+'.pick']:null,['users.'+playerId+'.skip']:true})});msg.textContent='이번 경기를 건너뜁니다.'}catch(e){msg.textContent=e.message}};
+$('mpHorseCount').onchange=()=>isHost&&roomData?.phase==='lobby'&&updateDoc(roomRef(room),{horseCount:Number($('mpHorseCount').value)});
+$('mpStart').onclick=async()=>{if(!isHost||!roomData)return;const users=roomData.users||{};if(Object.values(users).some(u=>!u.skip&&!u.pick)){msg.textContent='모든 참가자가 선택하거나 건너뛰어야 시작할 수 있습니다.';return}await updateDoc(roomRef(room),{phase:'racing',startedAt:Date.now(),results:null});window.raceApi?.start()};
+$('mpLeave').onclick=async()=>{if(room&&uid){if(isHost)await deleteDoc(roomRef(room));else await updateDoc(roomRef(room),{['users.'+uid]:deleteField()})}unsubscribe?.();unsubscribe=null;room='';roomData=null;roomBox.hidden=true;msg.textContent='방에서 나왔습니다.'};
+window.addEventListener('horse-race-finished',async e=>{if(isHost&&room&&roomData?.phase==='racing'){const results=e.detail.map(x=>({horse:x.id,time:x.time}));await updateDoc(roomRef(room),{phase:'finished',results,finishedAt:Date.now()})}});
 </script>
 </body>
 </html>
