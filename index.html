@@ -34,11 +34,12 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
   <button id="mpJoin">참가</button><span id="mpMessage" style="color:#cbd5e1"></span>
  </div>
  <div id="mpRoom" hidden style="margin-top:10px;padding-top:10px;border-top:1px solid #334155">
-  <div>방 <b id="mpRoomNameDisplay" style="color:#f8fafc"></b> · <b id="mpRoomCode" style="color:#fbbf24"></b> · <span id="mpPhase"></span> · 참가자 <span id="mpCount"></span></div>
+  <div>방 <b id="mpRoomNameDisplay" style="color:#f8fafc"></b> · <b id="mpRoomCode" style="color:#fbbf24"></b> · <span id="mpPhase" style="font-weight:bold;color:#38bdf8"></span> · 참가자 <span id="mpCount" style="font-weight:bold"></span></div>
   <div id="mpPlayers" style="margin:7px 0"></div>
   <div id="mpPickRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
    <span id="mpPickHint" style="color:#cbd5e1">트랙에서 원하는 말을 눌러 선택하세요.</span>
    <button id="mpSkip">선택 건너뛰기</button>
+   <button id="mpHostStartBtn" hidden style="background:#d97706;border-color:#f59e0b;color:#000;font-weight:900;">🚩 즉시 경주 시작</button>
    <label id="mpHorseSetting" hidden>말 수 <select id="mpHorseCount" style="background:#020617;color:#fbbf24;padding:6px;border-radius:6px"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
    <button id="mpLeave">나가기</button>
   </div>
@@ -90,6 +91,7 @@ const horseCountSelect=$('horseCountSelect'),horseScaleRange=$('horseScaleRange'
 let soundEnabled=true,audioCtx=null;
 function initAudio(){if(!audioCtx){const A=window.AudioContext||window.webkitAudioContext;if(A)audioCtx=new A()}if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume()}
 function playHoof(){if(!soundEnabled||!audioCtx)return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.setValueAtTime(80+Math.random()*40,t);o.frequency.exponentialRampToValueAtTime(20,t+.05);g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.001,t+.05);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(t+.05)}catch(e){}}
+function playBeep(freq=440,dur=0.08){if(!soundEnabled||!audioCtx)return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+dur)}catch(e){}}
 function playFanfare(){if(!soundEnabled||!audioCtx)return;try{[523.25,659.25,783.99,1046.5].forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),s=audioCtx.currentTime+i*.12;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.1,s);g.gain.exponentialRampToValueAtTime(.001,s+.35);o.connect(g);g.connect(audioCtx.destination);o.start(s);o.stop(s+.35)})}catch(e){}}
 $('soundToggleBtn').addEventListener('click',()=>{soundEnabled=!soundEnabled;$('soundIcon').textContent=soundEnabled?'🔊':'🔇';$('soundText').textContent=soundEnabled?'사운드 ON':'사운드 OFF';if(soundEnabled)initAudio()});
 
@@ -97,11 +99,16 @@ let wakeLock=null;
 async function reqWake(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
 function relWake(){if(wakeLock){wakeLock.release().then(()=>wakeLock=null).catch(()=>{})}}
 
+// 시간 동기화 함수 (전역 공유)
+window.__serverTimeOffset = 0;
+window.getSyncedTime = () => Date.now() + (window.__serverTimeOffset || 0);
+
 let numHorses=5,horseScale=.85,horses=[],particles=[],isRacing=false,isFinished=false,raceStartedAt=0,raceSeed=1,elapsedTime=0,finishOrder=[],raceLaunched=false,officiallyFinished=false;
+let precomputedResults=null,maxFinishTime=0,beepFlags={};
 let PAD_L=125,PAD_R=75;let finishLineX=0;
 
 function dust(x,y,color='#64748b',n=1){
- if(particles.length>12)return;
+ if(particles.length>14)return;
  for(let i=0;i<n;i++) particles.push({x:x+(Math.random()-.5)*4, y:y+(Math.random()-.5)*2, vx:-0.3-Math.random()*0.5, vy:-0.1-Math.random()*0.2, r:0.8+Math.random()*1.0, a:0.35+Math.random()*0.2, c:color});
 }
 function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.a-=dt*1.5;p.r+=dt*1.5;if(p.a<=0){particles.splice(i,1);continue}ctx.save();ctx.globalAlpha=p.a;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();ctx.restore()}}
@@ -121,27 +128,50 @@ function leg(c,hx,hy,p,front,col,w){
  c.lineWidth=w*.5;c.strokeStyle="#161010";c.beginPath();c.moveTo(fx,fy);c.lineTo(hfx,hfy);c.stroke();
 }
 
+// 결정론적(Deterministic) 랜덤 및 경로 계산
 function raceRandom(seed,horseId,slot){
  let x=(Number(seed)^Math.imul(horseId,0x9e3779b1)^Math.imul(slot+1,0x85ebca6b))>>>0;
  x=Math.imul(x^(x>>>16),0x7feb352d);x=Math.imul(x^(x>>>15),0x846ca68b);x^=x>>>16;
  return (x>>>0)/4294967296;
 }
-function raceStatusAt(horseId,t){
+function raceStatusAt(horseId,t,seed=raceSeed){
  let status='normal';const sec=Math.floor(t);
- for(let s=Math.max(0,sec-1);s<=sec;s++)if(raceRandom(raceSeed,horseId,10000+s*2)<.075&&t<s+2)status=raceRandom(raceSeed,horseId,10001+s*2)<.5?'injured':'tired';
+ for(let s=Math.max(0,sec-1);s<=sec;s++)if(raceRandom(seed,horseId,10000+s*2)<.075&&t<s+2)status=raceRandom(seed,horseId,10001+s*2)<.5?'injured':'tired';
  return status;
 }
-function raceProgress(horseId,t,trackWidth){
+function raceProgress(horseId,t,seed=raceSeed){
  const target=600,step=.2,scale=60;let distance=0,finishAt=null;
  const count=Math.ceil(Math.max(0,t)/step);
  for(let i=0;i<count&&distance<target;i++){
-  const from=i*step,duration=Math.min(step,t-from),mid=from+duration/2,status=raceStatusAt(horseId,mid);
-  const velocity=(.35+raceRandom(raceSeed,horseId,i)*.2)*scale*(status==='injured'?0:status==='tired'?.4:1);
+  const from=i*step,duration=Math.min(step,t-from),mid=from+duration/2,status=raceStatusAt(horseId,mid,seed);
+  const velocity=(.35+raceRandom(seed,horseId,i)*.2)*scale*(status==='injured'?0:status==='tired'?.4:1);
   if(velocity>0&&distance+velocity*duration>=target){finishAt=from+(target-distance)/velocity;distance=target;break}
   distance+=velocity*duration;
  }
- return {distance:distance/target,status:raceStatusAt(horseId,t),finishAt};
+ return {distance:distance/target,status:raceStatusAt(horseId,t,seed),finishAt};
 }
+
+// 각 말의 완주 시간 및 전체 결과 사전 계산
+function calcHorseFinishTime(seed,horseId){
+ const target=600,step=.2,scale=60;let distance=0;
+ for(let i=0;i<1500;i++){
+  const from=i*step,duration=step,mid=from+duration/2;
+  const status=raceStatusAt(horseId,mid,seed);
+  const velocity=(.35+raceRandom(seed,horseId,i)*.2)*scale*(status==='injured'?0:status==='tired'?.4:1);
+  if(velocity>0&&distance+velocity*duration>=target){return from+(target-distance)/velocity}
+  distance+=velocity*duration;
+ }
+ return 30.0;
+}
+function precomputeRace(seed,count){
+ const list=[];
+ for(let id=1;id<=count;id++){
+  list.push({horse:id,time:calcHorseFinishTime(seed,id)});
+ }
+ list.sort((a,b)=>a.time-b.time||a.horse-b.horse);
+ return list.map((item,idx)=>({...item,rank:idx+1}));
+}
+window.precomputeRace=precomputeRace;
 
 class Horse{
  constructor(id,col){this.id=id;this.col=col;this.reset(0)}
@@ -151,18 +181,27 @@ class Horse{
   this.phase=Math.random()*6.28;this.phaseStart=this.phase;this.status='normal';this.timer=0;this.rank=0;this.finished=false;this.finishTime=0;this.chg=Math.random()*40
  }
  update(dt,tw){
-  if(!isRacing||this.finished)return;
-  const progress=raceProgress(this.id,elapsedTime,tw);
-  this.status=progress.status;this.x=PAD_L+progress.distance*(finishLineX-PAD_L);
-  this.speed=(.35+raceRandom(raceSeed,this.id,Math.floor(elapsedTime/.2))*.2)*(tw/750)*(this.status==='injured'?0:this.status==='tired'?.4:1);
-  this.phase=this.phaseStart+elapsedTime*55;
-  if(progress.finishAt!==null&&elapsedTime>=progress.finishAt&&!this.finished){
-   this.finished=true;this.x=finishLineX;this.finishTime=progress.finishAt;finishOrder.push(this);
-   finishOrder.sort((a,b)=>a.finishTime-b.finishTime||a.id-b.id);finishOrder.forEach((h,i)=>h.rank=i+1);dust(this.x,this.y,'#f59e0b',6);
+  if(!isRacing)return;
+  const progress=raceProgress(this.id,elapsedTime,raceSeed);
+  this.status=progress.status;
+  
+  if(!this.finished){
+   this.x=PAD_L+progress.distance*(finishLineX-PAD_L);
+   this.speed=(.35+raceRandom(raceSeed,this.id,Math.floor(elapsedTime/.2))*.2)*(tw/750)*(this.status==='injured'?0:this.status==='tired'?.4:1);
+   this.phase=this.phaseStart+elapsedTime*55;
+   if(progress.finishAt!==null&&elapsedTime>=progress.finishAt){
+    this.finished=true;this.x=finishLineX;this.finishTime=progress.finishAt;
+    if(!finishOrder.some(h=>h.id===this.id)) finishOrder.push(this);
+    finishOrder.sort((a,b)=>a.finishTime-b.finishTime||a.id-b.id);
+    finishOrder.forEach((h,i)=>h.rank=i+1);
+    dust(this.x,this.y,'#f59e0b',7);
+   }
+  }else{
+   this.x=finishLineX;
   }
  }
  draw(c){
-  const k=this.col,p=this.phase,moving=this.speed>0&&this.status!=='injured';
+  const k=this.col,p=this.phase,moving=this.speed>0&&this.status!=='injured'&&!this.finished;
   const bob=moving?Math.sin(p*2)*.4:0;
   
   c.save();c.translate(this.x,this.y);c.scale(horseScale,horseScale);
@@ -289,13 +328,14 @@ function drawTrack(){
 function updateLeaderboard(){
  const sorted=[...horses].sort((a,b)=>b.x-a.x);leaderboardList.innerHTML='';
  sorted.forEach((h,i)=>{
-  const st=h.finished?`<span class="text-amber-400 font-extrabold">${h.rank}위 (완주)</span>`:h.status==='injured'?`<span class="text-red-400 font-bold">⚠️ 부상</span>`:h.status==='tired'?`<span class="text-blue-400 font-bold">💧 지침</span>`:`<span class="text-slate-400">${i+1}위</span>`;
+  const st=h.finished?`<span class="text-amber-400 font-extrabold">${h.rank}위 (${h.finishTime.toFixed(2)}s)</span>`:h.status==='injured'?`<span class="text-red-400 font-bold">⚠️ 부상</span>`:h.status==='tired'?`<span class="text-blue-400 font-bold">💧 지침</span>`:`<span class="text-slate-400">${i+1}위</span>`;
   const d=document.createElement('div');d.className="flex items-center justify-between bg-slate-950/80 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs";
   d.innerHTML=`<div class="flex items-center gap-2 truncate"><span class="w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center text-slate-950" style="background:${h.col.hex}">${h.id}</span><span class="font-bold text-slate-200 truncate">${h.col.name}</span></div><div class="text-[11px] whitespace-nowrap ml-1">${st}</div>`;
   leaderboardList.appendChild(d)});
 }
 
 function showResult(){
+ if(window.raceApi?.isMultiplayer?.()) return; // 멀티플레이어는 모듈에서 커스텀 렌더링
  podiumList.innerHTML='';
  finishOrder.forEach((h,i)=>{const m=['🥇','🥈','🥉'][i]||'🎗️';const r=document.createElement('div');
   r.className=`flex items-center justify-between p-2 rounded-xl border ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-300 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'}`;
@@ -304,21 +344,35 @@ function showResult(){
  resultModal.classList.remove('hidden');resultModal.classList.add('flex');
 }
 
-function startRace(sharedSeed,sharedStartAt){
+function startRace(sharedSeed,sharedStartAt,sharedResults){
  if(isRacing)return;initAudio();reqWake();
- raceSeed=Number.isFinite(Number(sharedSeed))?Number(sharedSeed):Math.floor(Math.random()*0x7fffffff);raceStartedAt=Number(sharedStartAt)||Date.now();
- isRacing=true;isFinished=false;raceLaunched=false;officiallyFinished=false;finishOrder=[];elapsedTime=Math.max(0,(Date.now()-raceStartedAt)/1000);
- horses.forEach(h=>{h.x=PAD_L;h.speed=0;h.status='normal';h.finished=false;h.rank=0;h.finishTime=0;h.phaseStart=raceRandom(raceSeed,h.id,999)*Math.PI*2;h.phase=h.phaseStart});
+ raceSeed=Number.isFinite(Number(sharedSeed))?Number(sharedSeed):Math.floor(Math.random()*0x7fffffff);
+ const currentSynced=window.getSyncedTime();
+ raceStartedAt=Number(sharedStartAt)||(currentSynced+3500);
+ 
+ precomputedResults=sharedResults||precomputeRace(raceSeed,numHorses);
+ maxFinishTime=Math.max(...precomputedResults.map(r=>r.time));
+ 
+ isRacing=true;isFinished=false;raceLaunched=false;officiallyFinished=false;finishOrder=[];beepFlags={};
+ elapsedTime=Math.max(0,(currentSynced-raceStartedAt)/1000);
+ 
+ horses.forEach(h=>{
+  h.x=PAD_L;h.speed=0;h.status='normal';h.finished=false;h.rank=0;h.finishTime=0;
+  h.phaseStart=raceRandom(raceSeed,h.id,999)*Math.PI*2;h.phase=h.phaseStart;
+ });
+ 
  startBtn.classList.add('hidden');resultModal.classList.add('hidden');resultModal.classList.remove('flex');
- liveStatusBadge.textContent="경주 진행 중";liveStatusBadge.className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse";
- gameStatusText.textContent=Date.now()<raceStartedAt?"출발 준비 중입니다. 3초 후 동시에 출발합니다!":"🔥 박진감 넘치는 경주가 진행 중입니다!";
+ liveStatusBadge.textContent="카운트다운";
+ liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
+ gameStatusText.textContent="출발 준비 중입니다. 카운트다운 후 동시에 출발합니다!";
 }
 
 function resetGame(){
- relWake();isRacing=false;isFinished=false;elapsedTime=0;finishOrder=[];particles=[];
+ relWake();isRacing=false;isFinished=false;elapsedTime=0;finishOrder=[];particles=[];beepFlags={};
  raceTimer.textContent="⏱️ 00.00초";liveStatusBadge.textContent="대기 중";liveStatusBadge.className="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full";
  gameStatusText.textContent="🚩 [경주 스타트] 버튼을 누르면 경주가 시작됩니다!";
- startBtn.classList.remove('hidden');resultModal.classList.add('hidden');resultModal.classList.remove('flex');
+ startBtn.classList.toggle('hidden',Boolean(window.raceApi?.isMultiplayer?.()));
+ resultModal.classList.add('hidden');resultModal.classList.remove('flex');
  resizeCanvas();updateLeaderboard();
 }
 
@@ -326,22 +380,52 @@ let last=performance.now();
 function animate(now){
  const dt=Math.min((now-last)/1000,.08);last=now;
  if(isRacing&&!isFinished){
-  const untilStart=(raceStartedAt-Date.now())/1000;elapsedTime=Math.max(0,(Date.now()-raceStartedAt)/1000);
+  const currentSynced=window.getSyncedTime();
+  const untilStart=(raceStartedAt-currentSynced)/1000;
+  
   if(untilStart>0){
+   elapsedTime=0;
    raceTimer.textContent=`출발까지 ${untilStart.toFixed(1)}초`;
    gameStatusText.textContent=`🚨 출발 ${Math.ceil(untilStart)}초 전 — 참가자 모두 동시에 출발합니다!`;
-   liveStatusBadge.textContent="3초 카운트다운";
+   liveStatusBadge.textContent=`카운트다운 ${Math.ceil(untilStart)}`;
+   const sCeil=Math.ceil(untilStart);
+   if([3,2,1].includes(sCeil)&&!beepFlags[sCeil]){
+    beepFlags[sCeil]=true;playBeep(440,0.09);
+   }
   }else{
+   elapsedTime=Math.max(0,(currentSynced-raceStartedAt)/1000);
    raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;
-   if(!raceLaunched){raceLaunched=true;gameStatusText.textContent="🔥 경주가 시작됐습니다!";liveStatusBadge.textContent="경주 진행 중"}
-  }
-  if(finishOrder.length===horses.length&&!isFinished){
-   isFinished=true;isRacing=false;relWake();
-   liveStatusBadge.textContent=window.raceApi?.isMultiplayer?.()?"결과 동기화 중":"경기 종료";liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
-   gameStatusText.textContent=window.raceApi?.isMultiplayer?.()?"완주했습니다. 참가자 전체 결과를 집계 중입니다.":`🏆 경주 종료! 우승마: ${finishOrder[0].col.name}`;
-   if(!window.raceApi?.isMultiplayer?.())playFanfare();
-   window.dispatchEvent(new CustomEvent('horse-race-finished',{detail:finishOrder.map(h=>({id:h.id,time:h.finishTime}))}));
-   if(!window.raceApi?.isMultiplayer?.())setTimeout(showResult,400);
+   if(!raceLaunched){
+    raceLaunched=true;beepFlags[0]=true;playBeep(880,0.25);
+    gameStatusText.textContent="🔥 경주가 시작됐습니다!";
+    liveStatusBadge.textContent="경주 진행 중";
+    liveStatusBadge.className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse";
+   }
+   
+   // 모든 말이 결승선을 통과했거나 최대 완주 시간에 도달한 경우
+   const allDoneByTime = maxFinishTime > 0 && elapsedTime >= (maxFinishTime + 0.1);
+   if((finishOrder.length===horses.length || allDoneByTime) && !isFinished){
+    isFinished=true;isRacing=false;relWake();
+    // 만약 시간차로 아직 finishOrder에 안 들어간 말이 있다면 사전 계산된 시간으로 완주 처리
+    if(finishOrder.length<horses.length&&precomputedResults){
+     precomputedResults.forEach(pr=>{
+      const h=horses.find(x=>x.id===pr.horse);
+      if(h&&!h.finished){
+       h.finished=true;h.x=finishLineX;h.finishTime=pr.time;h.rank=pr.rank;
+       if(!finishOrder.some(x=>x.id===h.id)) finishOrder.push(h);
+      }
+     });
+     finishOrder.sort((a,b)=>a.finishTime-b.finishTime||a.id-b.id);
+    }
+    liveStatusBadge.textContent="경기 종료";
+    liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
+    gameStatusText.textContent=`🏆 경주 종료! 우승마: ${finishOrder[0]?.col?.name || '1번 말'}`;
+    playFanfare();
+    window.dispatchEvent(new CustomEvent('horse-race-finished',{
+     detail:finishOrder.map(h=>({id:h.id,time:h.finishTime}))
+    }));
+    setTimeout(showResult,400);
+   }
   }
  }
  ctx.clearRect(0,0,canvas.width,canvas.height);drawTrack();drawParticles(dt);
@@ -352,9 +436,12 @@ function animate(now){
 
 window.raceApi={
  start:startRace,
+ reset:resetGame,
  isMultiplayer:()=>Boolean(window.__horseRoomActive),
  completeOfficially:results=>{
   if(!Array.isArray(results)||!results.length)return;
+  // 이미 진행 중인 경주가 있으면 자연스러운 결승선 통과를 방해하지 않고 결과만 저장
+  if(!isFinished && isRacing) return;
   finishOrder=results.map((r,i)=>horses.find(h=>h.id===Number(r.horse))).filter(Boolean);
   finishOrder.sort((a,b)=>results.findIndex(r=>Number(r.horse)===a.id)-results.findIndex(r=>Number(r.horse)===b.id));
   finishOrder.forEach((h,i)=>{h.rank=i+1;h.finishTime=Number(results[i]?.time)||h.finishTime;h.x=finishLineX;h.finished=true;h.status='normal'});
@@ -369,8 +456,15 @@ window.raceApi={
  setHorseCount:n=>{numHorses=n;horseCountSelect.value=String(n);createHorses();resetGame()}
 };
 
-startBtn.addEventListener('click',startRace);
-$('resetBtn').addEventListener('click',resetGame);$('modalRestartBtn').addEventListener('click',resetGame);
+startBtn.addEventListener('click',()=>startRace());
+$('resetBtn').addEventListener('click',resetGame);
+$('modalRestartBtn').addEventListener('click',()=>{
+ if(window.raceApi?.isMultiplayer?.()){
+  window.dispatchEvent(new CustomEvent('horse-rematch-requested'));
+ }else{
+  resetGame();
+ }
+});
 horseCountSelect.addEventListener('change',e=>{numHorses=parseInt(e.target.value,10);createHorses();resetGame()});
 horseScaleRange.addEventListener('input',e=>{const v=parseInt(e.target.value,10);horseScale=v/100;$('horseScaleVal').textContent=v+'%'});
 window.addEventListener('load',()=>{createHorses();resizeCanvas();updateLeaderboard();requestAnimationFrame(animate)});
@@ -379,7 +473,7 @@ window.addEventListener('load',()=>{createHorses();resizeCanvas();updateLeaderbo
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, deleteField, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const appId=typeof __app_id!=='undefined'?__app_id:'penalty-shootout-app';
 const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebase_config):{apiKey:"AIzaSyCl8PfDXVj1qLVt1TcxqHt_qymY7X43zAI",authDomain:"stock-game-768.firebaseapp.com",projectId:"stock-game-768",storageBucket:"stock-game-768.firebasestorage.app",messagingSenderId:"89845431802",appId:"1:89845431802:web:517763d2ba33bf4432b843"};
@@ -392,6 +486,29 @@ window.horsePickState=()=>({users:roomData?.users||{},colors:Object.fromEntries(
 
 const buttonStyle='padding:7px 10px;border:1px solid #64748b;border-radius:8px;background:#1e293b;color:#f8fafc;font-weight:bold;cursor:pointer';
 document.querySelectorAll('#multiPanel button').forEach(b=>b.style.cssText=buttonStyle);
+$('mpHostStartBtn').style.cssText='padding:7px 12px;border:1px solid #f59e0b;border-radius:8px;background:#d97706;color:#000;font-weight:900;cursor:pointer';
+
+// 정밀 서버 시간 오프셋 동기화 (RTT 편도 지연 보정)
+async function syncServerTime(){
+ if(!uid) return;
+ try{
+  const t0=Date.now();
+  const pingDoc=doc(db,'artifacts',appId,'public','data','horse_rooms',`_ping_${uid}`);
+  await setDoc(pingDoc,{t:serverTimestamp(),c:t0});
+  const snap=await getDoc(pingDoc);
+  const t1=Date.now();
+  const rtt=Math.max(1,t1-t0);
+  if(snap.exists()&&snap.data()?.t){
+   const serverMs=snap.data().t.toMillis();
+   const estimatedServerNow=serverMs+Math.round(rtt/2);
+   window.__serverTimeOffset=estimatedServerNow-t1;
+   console.log(`[TimeSync] RTT: ${rtt}ms, ServerOffset: ${window.__serverTimeOffset}ms`);
+  }
+  deleteDoc(pingDoc).catch(()=>{});
+ }catch(e){
+  console.warn('[TimeSync] Failed, using local time:',e);
+ }
+}
 
 async function initAuth(){
  try{
@@ -400,6 +517,7 @@ async function initAuth(){
   else cred=await signInAnonymously(auth);
   uid=cred.user.uid;
   msg.textContent='온라인 · 닉네임을 입력해 방을 만들거나 참가하세요.';
+  syncServerTime();
  }catch(e){
   console.error('Firebase auth init error',e);
   msg.textContent=`Firebase 로그인 오류 (${e.code||'unknown'}): ${e.message}`;
@@ -422,7 +540,7 @@ async function connect(codeValue, create=false){
   await setDoc(rr, {
    name: $('mpRoomName').value.trim().slice(0,24) || `${cleanName()}의 경마방`,
    host: uid,
-   horseCount: Number($('mpHorseCount').value),
+   horseCount: Number($('mpHorseCount').value) || 5,
    phase: 'lobby',
    createdAt: Date.now(),
    users: {}
@@ -440,7 +558,8 @@ async function connect(codeValue, create=false){
  isHost = create || data.host === uid;
  window.__horseRoomActive = true;
 
- // 💡 updateDoc 대신 setDoc merge를 사용하여 신규 참가 오류 수정
+ await syncServerTime();
+
  await setDoc(rr, {
   users: {
    [uid]: {
@@ -455,16 +574,20 @@ async function connect(codeValue, create=false){
  $('mpRoomCode').textContent = room;
  $('mpRoomNameDisplay').textContent = data.name || '경마방';
  $('mpHorseSetting').hidden = !isHost;
+ $('mpHostStartBtn').hidden = !isHost;
  roomBox.hidden = false;
 
  unsubscribe?.();
  unsubscribe = onSnapshot(rr, s => {
   roomData = s.exists() ? s.data() : null;
   if(!roomData){
-   msg.textContent = '방장이 방을 종료했습니다.';
+   msg.textContent = '방이 종료되었습니다.';
    roomBox.hidden = true;
+   window.__horseRoomActive = false;
+   window.raceApi?.reset();
    return;
   }
+  isHost = roomData.host === uid;
   render();
  }, e => {
   console.error('onSnapshot Error:', e);
@@ -473,81 +596,165 @@ async function connect(codeValue, create=false){
  msg.textContent = '';
 }
 
-// 모든 참가자의 선택이 끝나면 3초 카운트다운 출발 트리거
-async function checkAndAutoStart(){
- if(!roomData||roomData.phase!=='lobby')return;
- const users=roomData.users||{}, players=Object.values(users);
- if(players.length===0)return;
+// 방장 또는 전원 준비 시 3.5초 카운트다운 동시 시작 트리거
+async function triggerRaceStart(){
+ if(!isHost || !room || !roomData || roomData.phase !== 'lobby') return;
+ const users = roomData.users || {};
+ const players = Object.values(users);
+ if(players.length === 0) return;
  
- const allDone=players.every(u=>u.skip||u.pick);
+ const horseNum = Number(roomData.horseCount) || 5;
+ const seed = Math.floor(Math.random() * 0x7fffffff);
+ const precalculated = window.precomputeRace(seed, horseNum);
+ const startAt = window.getSyncedTime() + 3500; // 3.5초 카운트다운 보장
+ 
+ try{
+  await updateDoc(roomRef(room), {
+   phase: 'countdown',
+   startedAt: startAt,
+   raceSeed: seed,
+   precomputedResults: precalculated,
+   results: null,
+   finishedAt: null
+  });
+ }catch(e){
+  console.error('경주 시작 업데이트 실패:', e);
+ }
+}
+
+function checkAndAutoStart(){
+ if(!isHost || !roomData || roomData.phase !== 'lobby') return;
+ const users = roomData.users || {}, players = Object.values(users);
+ if(players.length === 0) return;
+ const allDone = players.every(u => u.skip || u.pick);
  if(allDone){
-  try{
-   await runTransaction(db, async tx=>{
-    const snap=await tx.get(roomRef(room));
-    if(!snap.exists())return;
-    const data=snap.data();
-    if(data.phase==='lobby'){
-     tx.update(roomRef(room),{
-      phase:'countdown',
-      startedAt:Date.now()+3000,
-      raceSeed:Math.floor(Math.random()*0x7fffffff),
-      results:null
-     });
-    }
-   });
-  }catch(e){
-   console.error('자동 시작 트랜잭션 실패:', e);
-  }
+  triggerRaceStart();
  }
 }
 
 function render(){
- if(!roomData)return;
- const users=roomData.users||{},players=Object.entries(users);
- playerColors=new Map();
+ if(!roomData) return;
+ const users = roomData.users || {}, players = Object.entries(users);
+ playerColors = new Map();
  [...players].sort(([a],[b])=>a.localeCompare(b)).forEach(([id],i)=>playerColors.set(id,`hsl(${Math.round((i*137.508)%360)} 78% 48%)`));
  
- $('mpCount').textContent=players.length;
- $('mpPhase').textContent=({lobby:'말 선택 중',countdown:'출발 준비 중',racing:'경기 진행 중',finished:'경기 종료'})[roomData.phase]||'대기 중';
- $('mpHorseCount').value=roomData.horseCount||5;
+ $('mpCount').textContent = players.length;
+ $('mpPhase').textContent = ({lobby:'말 선택 중', countdown:'출발 카운트다운', racing:'경기 진행 중', finished:'경기 종료'})[roomData.phase] || '대기 중';
+ $('mpHorseCount').value = roomData.horseCount || 5;
+ $('mpHorseSetting').hidden = !isHost;
+ $('mpHostStartBtn').hidden = !isHost || roomData.phase !== 'lobby';
  
- if(window.raceApi&&window.raceApi.getHorseCount()!==(Number(roomData.horseCount)||5)) {
-  window.raceApi.setHorseCount(Number(roomData.horseCount)||5);
+ if(window.raceApi && window.raceApi.getHorseCount() !== (Number(roomData.horseCount) || 5)){
+  window.raceApi.setHorseCount(Number(roomData.horseCount) || 5);
  }
  
- $('startBtn').classList.toggle('hidden',Boolean(room));
+ $('startBtn').classList.add('hidden'); // 멀티플레이에서는 항상 숨김
  
- if(roomData.phase==='countdown'&&lastPhase!=='countdown'){
-  window.raceApi?.start(roomData.raceSeed,roomData.startedAt);
+ // 1. 카운트다운 시작 수신 -> 모든 참가자 동시 출발 스케줄링
+ if(roomData.phase === 'countdown' && lastPhase !== 'countdown'){
+  window.raceApi?.start(roomData.raceSeed, roomData.startedAt, roomData.precomputedResults);
  }
- if(roomData.phase==='finished'){
+ 
+ // 2. 로비 복귀 수신 (다음 경기)
+ if(roomData.phase === 'lobby' && lastPhase !== 'lobby'){
+  window.raceApi?.reset();
+  $('resultModal').classList.add('hidden');
+  $('resultModal').classList.remove('flex');
+ }
+ 
+ // 3. 공식 경기 종료 수신
+ if(roomData.phase === 'finished' && roomData.results){
   window.raceApi?.completeOfficially(roomData.results);
  }
- lastPhase=roomData.phase;
+ lastPhase = roomData.phase;
  
- $('mpPlayers').innerHTML=players.map(([id,u])=>`<span style="display:inline-flex;align-items:center;gap:5px;background:#1e293b;border:1px solid ${playerColors.get(id)};border-radius:8px;padding:5px 8px;margin:2px"><span style="width:9px;height:9px;border-radius:50%;background:${playerColors.get(id)}"></span>${esc(u.name)}${id===roomData.host?' 👑':''} · ${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'말 선택 대기':'미선택'}</span>`).join('');
+ const readyCount = players.filter(([,u]) => u.pick || u.skip).length;
+ $('mpPlayers').innerHTML = players.map(([id,u])=>`
+  <span style="display:inline-flex;align-items:center;gap:5px;background:#1e293b;border:1px solid ${playerColors.get(id)};border-radius:8px;padding:5px 8px;margin:2px">
+   <span style="width:9px;height:9px;border-radius:50%;background:${playerColors.get(id)}"></span>
+   ${esc(u.name)}${id===roomData.host?' 👑':''} · ${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'선택 대기':'미선택'}
+  </span>
+ `).join('');
  
- $('mpSkip').disabled=roomData.phase!=='lobby';$('mpPickHint').textContent=roomData.phase==='lobby'?'트랙에서 원하는 말을 누르세요. 이미 선택된 말은 고를 수 없습니다.':'선택이 마감되었습니다.';
- $('mpPickRow').style.opacity=roomData.phase==='lobby'?'1':'.6';$('mpResults').textContent='';
- 
- if(roomData.phase==='finished'&&roomData.results){
-  const order=roomData.results,byHorse=new Map(order.map((r,i)=>[Number(r.horse),i+1]));
-  const ranked=players.filter(([,u])=>u.pick&&byHorse.has(Number(u.pick))).map(([id,u])=>({id,name:u.name,pick:Number(u.pick),horseRank:byHorse.get(Number(u.pick))})).sort((a,b)=>a.horseRank-b.horseRank);
-  const rows=ranked.length?ranked.map((u,i)=>`<div class="rounded-lg ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-200 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'} border p-2">${i===0?'🏆 ':''}${i+1}위 ${esc(u.name)} (${u.pick}번 말 - ${u.horseRank}위)</div>`).join(''):'<div class="text-slate-300">승리한 유저가 없습니다.</div>';
-  const markup=`<div class="text-center text-amber-300 font-bold mb-2">유저 최종 순위</div><div class="space-y-1">${rows}</div>`;
-  $('mpResults').innerHTML=markup;
-  $('podiumList').innerHTML=markup;
-  const title=document.querySelector('#resultModal h2');
-  if(title)title.textContent='유저 최종 순위';
-  $('resultModal').classList.remove('hidden');$('resultModal').classList.add('flex');
+ if(roomData.phase === 'lobby'){
+  $('mpSkip').disabled = false;
+  $('mpPickHint').textContent = `트랙에서 원하는 말을 누르세요. (선택 완료: ${readyCount}/${players.length}명)`;
+  $('mpPickRow').style.opacity = '1';
+  $('mpResults').textContent = '';
+ } else {
+  $('mpSkip').disabled = true;
+  $('mpPickHint').textContent = '선택이 마감되었습니다.';
+  $('mpPickRow').style.opacity = '.6';
  }
-
+ 
+ // 결과 화면 동기화
+ if(roomData.phase === 'finished' && roomData.results){
+  const order = roomData.results;
+  const byHorse = new Map(order.map((r,i) => [Number(r.horse), i + 1]));
+  const ranked = players.filter(([,u]) => u.pick && byHorse.has(Number(u.pick)))
+   .map(([id,u]) => ({
+    id,
+    name: u.name,
+    pick: Number(u.pick),
+    horseRank: byHorse.get(Number(u.pick))
+   }))
+   .sort((a,b) => a.horseRank - b.horseRank);
+   
+  const userRows = ranked.length ? ranked.map((u,i) => `
+   <div class="rounded-lg ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-200 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'} border p-2 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+     <span>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'🎗️'}</span>
+     <span>${i+1}위 <b>${esc(u.name)}</b></span>
+    </div>
+    <span class="text-amber-400 font-bold">${u.pick}번 말 (${u.horseRank}위 도착)</span>
+   </div>
+  `).join('') : '<div class="text-slate-400 text-center py-2">말을 선택한 참가자가 없습니다.</div>';
+  
+  const horseRows = order.map((r,i) => {
+   const col = COLORS[(r.horse - 1) % COLORS.length];
+   return `<div class="flex items-center justify-between text-xs py-1 border-b border-slate-800/60">
+    <div class="flex items-center gap-1.5">
+     <span class="w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-slate-950" style="background:${col.hex}">${r.horse}</span>
+     <span class="text-slate-200">${col.name}</span>
+    </div>
+    <span class="font-mono text-amber-400 font-bold">${Number(r.time).toFixed(2)}초 (${i+1}위)</span>
+   </div>`;
+  }).join('');
+  
+  const markup = `
+   <div class="mb-3">
+    <div class="text-center text-amber-300 font-bold mb-1.5 text-xs">👑 참가자 최종 순위</div>
+    <div class="space-y-1">${userRows}</div>
+   </div>
+   <div>
+    <div class="text-center text-slate-400 font-bold mb-1 text-[11px]">🏇 말 도착 기록</div>
+    <div class="max-h-36 overflow-y-auto no-scrollbar space-y-0.5">${horseRows}</div>
+   </div>
+  `;
+  
+  $('mpResults').innerHTML = markup;
+  $('podiumList').innerHTML = markup;
+  const title = document.querySelector('#resultModal h2');
+  if(title) title.textContent = '참가자 및 말 최종 순위';
+  
+  const restartBtn = $('modalRestartBtn');
+  restartBtn.textContent = isHost ? '🔄 다음 경기 준비 (방 리셋)' : '⏳ 방장의 다음 경기 준비를 기다리는 중...';
+  restartBtn.disabled = !isHost;
+  restartBtn.className = isHost
+   ? "w-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black py-1.5 rounded-xl font-jua text-xs border border-amber-300 cursor-pointer"
+   : "w-full bg-slate-800 text-slate-400 font-black py-1.5 rounded-xl font-jua text-xs border border-slate-700 cursor-not-allowed";
+  
+  $('resultModal').classList.remove('hidden');
+  $('resultModal').classList.add('flex');
+ }
+ 
  checkAndAutoStart();
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 $('mpCreate').onclick=async()=>{try{const c=code();await connect(c,true)}catch(e){msg.textContent=e.message}};
 $('mpJoin').onclick=async()=>{try{await connect($('mpCode').value.trim().toUpperCase(),false)}catch(e){msg.textContent=e.message}};
+$('mpHostStartBtn').onclick=async()=>{try{await triggerRaceStart()}catch(e){msg.textContent=e.message}};
 
 async function chooseHorse(horse){
  if(!uid||!room||roomData?.phase!=='lobby')return;
@@ -572,7 +779,7 @@ canvas.addEventListener('click',e=>{
  const rect=canvas.getBoundingClientRect(),y=(e.clientY-rect.top)*(canvas.height/rect.height),top=55,bottom=canvas.height-15;
  if(y<top||y>=bottom)return;
  const lane=Math.floor((y-top)/((bottom-top)/numHorses));
- if(lane>=0&&lane<numHorses)chooseHorse(lane+1)
+ if(lane>=0&&lane<numHorses)chooseHorse(lane+1);
 });
 canvas.style.cursor='pointer';
 
@@ -594,16 +801,41 @@ $('mpHorseCount').onchange=()=>isHost&&roomData?.phase==='lobby'&&updateDoc(room
 $('mpLeave').onclick=async()=>{
  if(room&&uid){
   if(isHost)await deleteDoc(roomRef(room));
-  else await updateDoc(roomRef(room),{['users.'+uid]:deleteField()})
+  else await updateDoc(roomRef(room),{['users.'+uid]:deleteField()});
  }
  unsubscribe?.();
  unsubscribe=null;
  room='';roomData=null;
  window.__horseRoomActive=false;
  roomBox.hidden=true;
- msg.textContent='방에서 나왔습니다.'
+ msg.textContent='방에서 나왔습니다.';
+ window.raceApi?.reset();
 };
 
+// 방장 전용: 다음 경기 준비 (방 리셋)
+window.addEventListener('horse-rematch-requested',async()=>{
+ if(!isHost||!room||!roomData)return;
+ try{
+  const users=roomData.users||{};
+  const updates={
+   phase:'lobby',
+   startedAt:null,
+   raceSeed:null,
+   precomputedResults:null,
+   results:null,
+   finishedAt:null
+  };
+  for(const id of Object.keys(users)){
+   updates[`users.${id}.pick`]=null;
+   updates[`users.${id}.skip`]=false;
+  }
+  await updateDoc(roomRef(room),updates);
+ }catch(e){
+  console.error('방 리셋 실패:',e);
+ }
+});
+
+// 경기 완주 시 공식 결과 동기화
 window.addEventListener('horse-race-finished',async e=>{
  if(isHost&&room&&roomData?.phase==='countdown'){
   const results=e.detail.map(x=>({horse:x.id,time:x.time}));
