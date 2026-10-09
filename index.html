@@ -16,7 +16,7 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
   50% { transform: scale(1.15); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
-.count-pop { animation: countPop 0.35s ease-out forwards; }
+.count-pop { animation: countPop 0.25s ease-out forwards; }
 </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen w-screen flex flex-col justify-between p-1 sm:p-2">
@@ -38,9 +38,9 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
  <div id="mpLobbySetup" class="flex flex-wrap gap-1.5 items-center">
   <b class="text-amber-400 text-xs sm:text-sm font-black whitespace-nowrap">멀티 경마</b>
   <input id="mpName" maxlength="16" placeholder="닉네임" class="w-20 sm:w-24 px-2 py-1 bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
-  <input id="mpRoomName" maxlength="24" placeholder="방 이름" class="w-24 sm:w-28 px-2 py-1 bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
-  <button id="mpCreate" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg text-xs whitespace-nowrap">방 만들기</button>
-  <input id="mpCode" maxlength="6" placeholder="방 코드" class="w-16 sm:w-20 px-2 py-1 uppercase bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
+  <input id="mpRoomName" maxlength="24" placeholder="방제목 입력" class="w-28 sm:w-36 px-2 py-1 bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
+  <button id="mpCreate" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg text-xs whitespace-nowrap shadow">방 만들기</button>
+  <input id="mpCode" maxlength="24" placeholder="참가할 방제목" class="w-28 sm:w-36 px-2 py-1 bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
   <button id="mpJoin" class="bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-slate-600 text-xs whitespace-nowrap">참가</button>
   <span id="mpMessage" class="text-slate-400 text-[11px] truncate flex-1 min-w-[120px]"></span>
  </div>
@@ -50,9 +50,8 @@ body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select
   <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-1 flex-wrap">
    <div class="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
     <span class="text-amber-400 font-black">🏇 방</span>
-    <b id="mpRoomNameDisplay" class="text-slate-100 truncate max-w-[110px] sm:max-w-[200px]"></b>
-    <span class="text-slate-500">|</span>
-    <span class="text-slate-400 font-mono">코드:<b id="mpRoomCode" class="text-amber-400 ml-0.5"></b></span>
+    <b id="mpRoomNameDisplay" class="text-amber-300 font-bold truncate max-w-[140px] sm:max-w-[240px]"></b>
+    <span id="mpRoomCode" class="hidden"></span>
     <span class="text-slate-500">|</span>
     <span id="mpPhase" class="text-cyan-400 font-bold"></span>
     <span class="text-slate-400">(<span id="mpCount" class="font-bold text-white">0</span>명)</span>
@@ -155,10 +154,10 @@ function relWake(){if(wakeLock){wakeLock.release().then(()=>wakeLock=null).catch
 window.__serverTimeOffset = 0;
 window.getSyncedTime = () => Date.now() + (window.__serverTimeOffset || 0);
 
-// 🎯 [원상 복구] 사용자의 요청에 따라 전체 게임 길이(완주 시간 약 20~24초)는 원래대로 복원!
+// 🎯 전체 게임 길이(완주 시간 약 20~24초)
 const RACE_TARGET = 600;
 const RACE_STEP = 0.2;
-const RACE_SCALE = 60; // 원래 속도 복원 (적당한 경기 플레이 타임 유지)
+const RACE_SCALE = 60; // 원래 속도 복원
 
 let numHorses=5,horseScale=.85,horses=[],particles=[],isRacing=false,isFinished=false,raceStartedAt=0,raceSeed=1,elapsedTime=0,finishOrder=[],raceLaunched=false,officiallyFinished=false;
 let precomputedResults=null,maxFinishTime=0,beepFlags={};
@@ -171,7 +170,7 @@ function dust(x,y,color='#64748b',n=1){
 }
 function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.a-=dt*1.8;p.r+=dt*1.8;if(p.a<=0){particles.splice(i,1);continue}ctx.save();ctx.globalAlpha=p.a;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();ctx.restore()}}
 
-// 🐎 [말의 움직임 개선] 폰 화면에서도 다리가 쭉쭉 뻗고 힘차게 구르는 역동적인 다리 관절 모션
+// 🐎 역동적인 다리 관절 모션
 function leg(c,hx,hy,p,front,col,w){
  const sw=Math.sin(p),lift=Math.max(0,Math.cos(p));
  const a1=sw*(front?.95:.85);
@@ -198,7 +197,6 @@ function raceStatusAt(horseId,t,seed=raceSeed){
  return status;
 }
 
-// 궤적 사전 계산 및 캐싱
 function buildRaceCache(seed, count){
  raceCache={};
  for(let id=1;id<=count;id++){
@@ -264,8 +262,6 @@ class Horse{
   if(!this.finished){
    this.x=PAD_L+progress.distance*(finishLineX-PAD_L);
    this.speed=(.35+raceRandom(raceSeed,this.id,Math.floor(elapsedTime/RACE_STEP))*.2)*(tw/750)*(this.status==='injured'?0:this.status==='tired'?.4:1);
-   
-   // 🐎 [말의 움직임 개선] 다리 회전 템포를 85로 올려 다리를 파닥파닥 빠르게 차며 달리는 경쾌한 모션 구현!
    this.phase=this.phaseStart+elapsedTime*85;
    
    if(progress.finishAt!==null&&elapsedTime>=progress.finishAt){
@@ -281,7 +277,6 @@ class Horse{
  }
  draw(c){
   const k=this.col,p=this.phase,moving=this.speed>0&&this.status!=='injured'&&!this.finished;
-  // 🐎 상하 들썩임(bob)을 생동감 있게 강화
   const bob=moving?Math.sin(p*2)*.7:0;
   
   c.save();c.translate(this.x,this.y);
@@ -294,7 +289,6 @@ class Horse{
    c.fillStyle="#3b82f6";c.font="bold 28px sans-serif";c.textAlign="center";c.fillText("💧",0,-46+bob);
   }
   
-  // 🐎 질주 시 리듬감 있는 기울기 모션
   if(moving)c.rotate(Math.sin(p)*.02);
   c.fillStyle="rgba(255,255,255,.1)";c.beginPath();c.ellipse(0,12,30,4,0,0,6.283);c.fill();
   
@@ -506,7 +500,6 @@ function animate(now){
    elapsedTime=Math.max(0,(currentSynced-raceStartedAt)/1000);
    raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;
    
-   // 🐎 경쾌한 발굽 소리
    hoofTimer+=dt;
    if(hoofTimer>0.15){
     hoofTimer=0;
@@ -518,7 +511,9 @@ function animate(now){
     countdownNumber.textContent="START!";
     countdownNumber.className="text-6xl sm:text-8xl font-black font-jua text-emerald-400 drop-shadow-[0_0_35px_rgba(52,211,153,0.95)] count-pop";
     countdownSub.textContent="🔥 경주가 시작되었습니다!";
-    setTimeout(()=>{ countdownOverlay.classList.add('hidden'); }, 700);
+    
+    // ⚡ [요구사항 반영] START 글자가 0.25초 만에 신속하게 사라짐!
+    setTimeout(()=>{ countdownOverlay.classList.add('hidden'); }, 250);
     
     gameStatusText.textContent="🔥 모든 참가자의 경주가 시작됐습니다!";
     liveStatusBadge.textContent="경주 진행 중";
@@ -642,7 +637,7 @@ async function initAuth(){
   if(typeof __initial_auth_token!=="undefined"&&__initial_auth_token)cred=await signInWithCustomToken(auth,__initial_auth_token);
   else cred=await signInAnonymously(auth);
   uid=cred.user.uid;
-  msg.textContent='온라인 · 닉네임을 입력해 방을 만들거나 참가하세요.';
+  msg.textContent='온라인 · 방제목을 입력해 방을 만들거나 참가하세요.';
   syncServerTime();
  }catch(e){
   console.error('Firebase auth init error',e);
@@ -652,19 +647,21 @@ async function initAuth(){
 initAuth();
 
 function cleanName(){return $('mpName').value.trim().slice(0,16)||'게스트'}
-function code(){return Math.random().toString(36).slice(2,8).toUpperCase()}
 
-async function connect(codeValue, create=false){
+// 🚀 [요구사항 반영] 방제목으로 방코드를 사용하고, 중복이 있으면 생성 불가 처리
+async function connect(roomTitle, create=false){
  if(!uid) throw Error('로그인 중입니다. 1~2초 후 다시 시도하세요.');
- room = codeValue.trim().toUpperCase();
- if(!room) throw Error('방 코드를 입력해주세요.');
+ room = roomTitle.trim();
+ if(!room) throw Error('방제목을 입력해주세요.');
+ if(room.includes('/')) throw Error('방제목에 "/" 문자는 사용할 수 없습니다.');
+ 
  const rr = roomRef(room);
 
  if(create){
   const checkSnap = await getDoc(rr);
-  if(checkSnap.exists()) throw Error('이미 존재하는 방 코드입니다. 다시 시도하세요.');
+  if(checkSnap.exists()) throw Error(`이미 존재하는 방제목 [${room}]입니다. 다른 방제목을 사용하세요.`);
   await setDoc(rr, {
-   name: $('mpRoomName').value.trim().slice(0,24) || `${cleanName()}의 경마방`,
+   name: room,
    host: uid,
    horseCount: Number($('mpHorseCount').value) || 5,
    phase: 'lobby',
@@ -674,7 +671,7 @@ async function connect(codeValue, create=false){
  }
 
  const snap = await getDoc(rr);
- if(!snap.exists()) throw Error(`방 코드 [${room}]을 찾을 수 없습니다.`);
+ if(!snap.exists()) throw Error(`방 [${room}]을 찾을 수 없습니다.`);
  
  const data = snap.data();
  if(!create && data.phase !== 'lobby' && !data.users?.[uid]){
@@ -698,7 +695,7 @@ async function connect(codeValue, create=false){
  }, { merge: true });
 
  $('mpRoomCode').textContent = room;
- $('mpRoomNameDisplay').textContent = data.name || '경마방';
+ $('mpRoomNameDisplay').textContent = data.name || room;
  
  setupBox.style.display = 'none';
  $('singleHorseSetting').classList.add('hidden');
@@ -921,8 +918,28 @@ function render(){
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-$('mpCreate').onclick=async()=>{try{const c=code();await connect(c,true)}catch(e){msg.textContent=e.message}};
-$('mpJoin').onclick=async()=>{try{await connect($('mpCode').value.trim().toUpperCase(),false)}catch(e){msg.textContent=e.message}};
+
+// 🚀 [요구사항 반영] 방제목으로 방 만들기 & 참가하기
+$('mpCreate').onclick=async()=>{
+ try{
+  const name = $('mpRoomName').value.trim();
+  if(!name) throw Error('방제목을 입력해주세요.');
+  await connect(name, true);
+ }catch(e){
+  msg.textContent = e.message;
+ }
+};
+
+$('mpJoin').onclick=async()=>{
+ try{
+  const name = $('mpCode').value.trim() || $('mpRoomName').value.trim();
+  if(!name) throw Error('참가할 방제목을 입력해주세요.');
+  await connect(name, false);
+ }catch(e){
+  msg.textContent = e.message;
+ }
+};
+
 $('mpHostStartBtn').onclick=async()=>{try{await triggerRaceStart()}catch(e){msg.textContent=e.message}};
 $('mpHostResetBtn').onclick=async()=>{try{await resetRoomToLobby()}catch(e){msg.textContent=e.message}};
 
