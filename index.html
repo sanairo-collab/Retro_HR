@@ -11,61 +11,103 @@ html,body{height:100%; margin:0; padding:0;}
 body{font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow-x:hidden;overflow-y:auto;background:#030712;box-sizing:border-box}
 .font-jua{font-family:'Jua',sans-serif}
 .no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{scrollbar-width:none}
+@keyframes countPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.count-pop { animation: countPop 0.35s ease-out forwards; }
 </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen w-screen flex flex-col justify-between p-1.5 sm:p-2">
-<header class="w-full bg-slate-900/95 border-b border-amber-500/40 px-3 py-1 rounded-xl flex items-center justify-between gap-2 text-xs shrink-0 shadow-lg">
- <div class="flex items-center gap-1.5 shrink-0"><span class="text-lg">🏇</span><h1 class="font-black text-amber-400 font-jua text-xs sm:text-sm whitespace-nowrap">리얼리스틱 그랑프리</h1></div>
- <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-  <button id="soundToggleBtn" class="flex items-center bg-slate-800 text-amber-400 font-bold px-2 py-0.5 rounded-lg border border-slate-700 text-[11px] gap-1 whitespace-nowrap"><span id="soundIcon">🔊</span><span id="soundText" class="hidden sm:inline">사운드 ON</span></button>
-  <div class="flex items-center bg-slate-800/90 px-2 py-0.5 rounded-lg border border-slate-700 text-[11px]"><label class="text-slate-300 font-bold mr-1 whitespace-nowrap">말 출전:</label>
-   <select id="horseCountSelect" class="bg-slate-950 text-amber-400 font-bold rounded px-1 border border-slate-700 text-[11px]">
+<body class="bg-slate-950 text-slate-100 min-h-screen w-screen flex flex-col justify-between p-1 sm:p-2">
+<header class="w-full bg-slate-900/95 border-b border-amber-500/40 px-2 sm:px-3 py-1 rounded-xl flex items-center justify-between gap-1.5 text-xs shrink-0 shadow-lg">
+ <div class="flex items-center gap-1 shrink-0"><span class="text-base sm:text-lg">🏇</span><h1 class="font-black text-amber-400 font-jua text-xs sm:text-sm whitespace-nowrap">리얼 그랑프리</h1></div>
+ <div class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar">
+  <button id="soundToggleBtn" class="flex items-center bg-slate-800 text-amber-400 font-bold px-1.5 sm:px-2 py-0.5 rounded-lg border border-slate-700 text-[10px] sm:text-[11px] gap-1 whitespace-nowrap"><span id="soundIcon">🔊</span><span id="soundText" class="hidden sm:inline">사운드 ON</span></button>
+  <div id="singleHorseSetting" class="flex items-center bg-slate-800/90 px-1.5 sm:px-2 py-0.5 rounded-lg border border-slate-700 text-[10px] sm:text-[11px]"><label class="text-slate-300 font-bold mr-1 whitespace-nowrap">말:</label>
+   <select id="horseCountSelect" class="bg-slate-950 text-amber-400 font-bold rounded px-1 border border-slate-700 text-[10px] sm:text-[11px]">
     <option value="2">2두</option><option value="3">3두</option><option value="4">4두</option><option value="5" selected>5두</option><option value="6">6두</option><option value="7">7두</option><option value="8">8두</option><option value="9">9두</option><option value="10">10두</option></select></div>
-  <div class="flex items-center bg-slate-800/90 px-2 py-0.5 rounded-lg border border-slate-700 text-[11px] gap-1"><label class="text-slate-300 font-bold whitespace-nowrap">크기:</label>
-   <input type="range" id="horseScaleRange" min="50" max="140" value="85" class="w-12 sm:w-16 accent-amber-500"><span id="horseScaleVal" class="text-amber-400 font-extrabold w-6 text-right text-[10px]">85%</span></div>
-  <button id="resetBtn" class="bg-slate-800 text-slate-200 font-bold px-2 py-0.5 rounded-lg border border-slate-600 text-[11px] whitespace-nowrap">🔄 재설정</button>
+  <div class="flex items-center bg-slate-800/90 px-1.5 sm:px-2 py-0.5 rounded-lg border border-slate-700 text-[10px] sm:text-[11px] gap-1"><label class="text-slate-300 font-bold whitespace-nowrap">크기:</label>
+   <input type="range" id="horseScaleRange" min="50" max="140" value="85" class="w-10 sm:w-16 accent-amber-500"><span id="horseScaleVal" class="text-amber-400 font-extrabold w-5 sm:w-6 text-right text-[10px]">85%</span></div>
+  <button id="resetBtn" class="bg-slate-800 text-slate-200 font-bold px-1.5 sm:px-2 py-0.5 rounded-lg border border-slate-600 text-[10px] sm:text-[11px] whitespace-nowrap">🔄 재설정</button>
  </div>
 </header>
 
-<section id="multiPanel" style="font:14px 'Noto Sans KR',sans-serif;background:#0f172a;color:#f8fafc;border:1px solid #475569;border-radius:14px;padding:12px;margin:8px;">
- <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-  <b style="color:#fbbf24">멀티 경마</b><input id="mpName" maxlength="16" placeholder="닉네임" style="width:110px;padding:7px;background:#020617;color:white;border:1px solid #475569;border-radius:8px"><input id="mpRoomName" maxlength="24" placeholder="방 이름" style="width:130px;padding:7px;background:#020617;color:white;border:1px solid #475569;border-radius:8px">
-  <button id="mpCreate">방 만들기</button><input id="mpCode" maxlength="6" placeholder="방 코드" style="width:90px;padding:7px;text-transform:uppercase;background:#020617;color:white;border:1px solid #475569;border-radius:8px">
-  <button id="mpJoin">참가</button><span id="mpMessage" style="color:#cbd5e1"></span>
+<section id="multiPanel" class="bg-slate-900 text-slate-100 border border-slate-700 rounded-xl p-2 sm:p-2.5 my-1 text-xs shrink-0 shadow">
+ <!-- 방 입장 전 설정 바 -->
+ <div id="mpLobbySetup" class="flex flex-wrap gap-1.5 items-center">
+  <b class="text-amber-400 text-xs sm:text-sm font-black whitespace-nowrap">멀티 경마</b>
+  <input id="mpName" maxlength="16" placeholder="닉네임" class="w-20 sm:w-24 px-2 py-1 bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
+  <input id="mpRoomName" maxlength="24" placeholder="방 이름" class="w-24 sm:w-28 px-2 py-1 bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
+  <button id="mpCreate" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg text-xs whitespace-nowrap">방 만들기</button>
+  <input id="mpCode" maxlength="6" placeholder="방 코드" class="w-16 sm:w-20 px-2 py-1 uppercase bg-slate-950 text-white border border-slate-700 rounded-lg text-xs">
+  <button id="mpJoin" class="bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-slate-600 text-xs whitespace-nowrap">참가</button>
+  <span id="mpMessage" class="text-slate-400 text-[11px] truncate flex-1 min-w-[120px]"></span>
  </div>
- <div id="mpRoom" hidden style="margin-top:10px;padding-top:10px;border-top:1px solid #334155">
-  <div>방 <b id="mpRoomNameDisplay" style="color:#f8fafc"></b> · <b id="mpRoomCode" style="color:#fbbf24"></b> · <span id="mpPhase" style="font-weight:bold;color:#38bdf8"></span> · 참가자 <span id="mpCount" style="font-weight:bold"></span></div>
-  <div id="mpPlayers" style="margin:7px 0"></div>
-  <div id="mpPickRow" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-   <span id="mpPickHint" style="color:#cbd5e1">트랙에서 원하는 말을 눌러 선택하세요.</span>
-   <button id="mpSkip">선택 건너뛰기</button>
-   <button id="mpHostStartBtn" hidden style="background:#d97706;border-color:#f59e0b;color:#000;font-weight:900;">🚩 즉시 경주 시작</button>
-   <label id="mpHorseSetting" hidden>말 수 <select id="mpHorseCount" style="background:#020617;color:#fbbf24;padding:6px;border-radius:6px"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
-   <button id="mpLeave">나가기</button>
+ 
+ <!-- 방 입장 후 컴팩트 룸 바 (상단 공간 최소화) -->
+ <div id="mpRoom" hidden class="space-y-1.5">
+  <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-1 flex-wrap">
+   <div class="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
+    <span class="text-amber-400 font-black">🏇 방</span>
+    <b id="mpRoomNameDisplay" class="text-slate-100 truncate max-w-[110px] sm:max-w-[200px]"></b>
+    <span class="text-slate-500">|</span>
+    <span class="text-slate-400 font-mono">코드:<b id="mpRoomCode" class="text-amber-400 ml-0.5"></b></span>
+    <span class="text-slate-500">|</span>
+    <span id="mpPhase" class="text-cyan-400 font-bold"></span>
+    <span class="text-slate-400">(<span id="mpCount" class="font-bold text-white">0</span>명)</span>
+   </div>
+   <button id="mpLeave" class="bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-bold px-2 py-0.5 rounded border border-rose-800/80 text-[10px] sm:text-[11px] whitespace-nowrap shrink-0">🚪 방 나가기</button>
   </div>
-  <div id="mpResults" style="margin-top:8px;color:#fbbf24"></div>
+  
+  <div id="mpPlayers" class="flex flex-wrap gap-1 max-h-16 overflow-y-auto no-scrollbar py-0.5"></div>
+  
+  <div id="mpPickRow" class="flex items-center justify-between gap-1.5 flex-wrap pt-0.5 text-[11px]">
+   <span id="mpPickHint" class="text-amber-300 font-bold truncate flex-1 min-w-[140px]">트랙에서 원하는 말을 터치해 선택하세요!</span>
+   <div class="flex items-center gap-1 shrink-0">
+    <button id="mpSkip" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-2 py-0.5 rounded border border-slate-700 text-[10px] sm:text-[11px] whitespace-nowrap">선택 건너뛰기</button>
+    <label id="mpHorseSetting" hidden class="flex items-center bg-slate-950 px-1.5 py-0.5 rounded border border-slate-700 text-[10px] sm:text-[11px] gap-1">말 수 <select id="mpHorseCount" class="bg-slate-900 text-amber-400 font-bold rounded px-1"><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+    <button id="mpHostStartBtn" hidden class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded border border-amber-300 text-[11px] sm:text-xs shadow whitespace-nowrap">🚩 경주 시작!</button>
+    <button id="mpHostResetBtn" hidden class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black px-2.5 py-0.5 rounded border border-cyan-300 text-[11px] sm:text-xs shadow whitespace-nowrap">🔄 말 선택 재시작</button>
+   </div>
+  </div>
+  <div id="mpResults" class="hidden"></div>
  </div>
 </section>
 
-<main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-1.5 my-1 min-h-0">
- <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden h-[260px] sm:h-[340px] lg:h-[calc(100vh-70px)] min-h-[250px]">
+<main class="flex-1 w-full grid grid-cols-1 lg:grid-cols-4 gap-1.5 my-0.5 min-h-0">
+ <div class="lg:col-span-3 bg-slate-900 rounded-xl p-1 border border-slate-800/80 flex flex-col justify-between relative overflow-hidden h-[280px] sm:h-[350px] lg:h-[calc(100vh-80px)] min-h-[260px]">
   <div class="relative w-full flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-slate-950 rounded-lg">
    <canvas id="raceCanvas" class="w-full h-full rounded-lg block"></canvas>
-   <div class="absolute top-2 right-2 z-20"><button id="startBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-3.5 py-1.5 rounded-xl shadow-xl active:scale-95 transition flex items-center gap-1 text-xs font-jua border border-amber-200"><span>▶</span><span>경주 스타트!</span></button></div>
-   <div id="resultModal" class="absolute inset-0 bg-slate-950/85 hidden items-center justify-center p-2 z-30">
-    <div class="bg-slate-900 border-2 border-amber-500/80 rounded-2xl p-3 max-w-xs sm:max-w-sm w-full text-center max-h-[95%] flex flex-col min-h-0">
+   
+   <!-- 싱글 플레이 스타트 버튼 -->
+   <div class="absolute top-2 right-2 z-20"><button id="startBtn" class="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl shadow-xl active:scale-95 transition flex items-center gap-1 text-xs font-jua border border-amber-200"><span>▶</span><span>경주 스타트!</span></button></div>
+   
+   <!-- 🚨 3초 카운트다운 대형 중앙 오버레이 -->
+   <div id="countdownOverlay" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30 hidden bg-slate-950/40 backdrop-blur-[2px] transition-all duration-150">
+    <div id="countdownBox" class="flex flex-col items-center justify-center">
+     <div id="countdownNumber" class="text-7xl sm:text-9xl font-black font-jua text-amber-400 drop-shadow-[0_0_35px_rgba(245,158,11,0.95)] count-pop">3</div>
+     <div id="countdownSub" class="text-xs sm:text-sm font-extrabold text-amber-200 bg-slate-900/90 px-3.5 py-1 rounded-full border border-amber-500/50 mt-2 shadow-2xl backdrop-blur-sm">잠시 후 출발합니다!</div>
+    </div>
+   </div>
+
+   <!-- 최종 결과 및 시상식 모달 -->
+   <div id="resultModal" class="absolute inset-0 bg-slate-950/85 hidden items-center justify-center p-2 z-40">
+    <div class="bg-slate-900 border-2 border-amber-500/80 rounded-2xl p-3 max-w-xs sm:max-w-sm w-full text-center max-h-[95%] flex flex-col min-h-0 shadow-2xl">
      <div class="text-xl">🏆</div><h2 class="text-sm sm:text-base font-black text-amber-400 font-jua">시상식 및 최종 순위</h2>
      <div id="podiumList" class="space-y-1 my-1.5 text-left text-[11px] sm:text-xs overflow-y-auto min-h-0 flex-1"></div>
      <button id="modalRestartBtn" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black py-1.5 rounded-xl font-jua text-xs border border-amber-300">🔄 한 게임 더 하기!</button>
     </div>
    </div>
   </div>
+  
   <div class="mt-1 bg-slate-950/95 px-2.5 py-0.5 rounded-lg border border-slate-800 flex items-center justify-between text-[11px] shrink-0">
-   <div id="gameStatusText" class="font-jua text-amber-300 truncate">🚩 [경주 스타트] 버튼을 누르면 경주가 시작됩니다!</div>
+   <div id="gameStatusText" class="font-jua text-amber-300 truncate">🚩 말을 선택하거나 [경주 스타트] 버튼을 누르면 시작됩니다!</div>
    <div id="raceTimer" class="font-mono text-amber-400 font-extrabold whitespace-nowrap ml-2 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">⏱️ 00.00초</div>
   </div>
  </div>
- <div class="hidden sm:flex lg:col-span-1 bg-slate-900 rounded-xl p-2 border border-slate-800/80 flex-col min-h-0 overflow-hidden h-[260px] lg:h-[calc(100vh-70px)]">
+ 
+ <div class="hidden sm:flex lg:col-span-1 bg-slate-900 rounded-xl p-2 border border-slate-800/80 flex-col min-h-0 overflow-hidden h-[280px] lg:h-[calc(100vh-80px)]">
   <h2 class="text-xs font-extrabold text-amber-400 font-jua border-b border-slate-800 pb-1 mb-1.5 flex items-center justify-between shrink-0"><span>📊 실시간 라이브 순위</span><span id="liveStatusBadge" class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full">대기 중</span></h2>
   <div id="leaderboardList" class="flex-1 space-y-1 overflow-y-auto min-h-0"></div>
  </div>
@@ -87,11 +129,12 @@ const COLORS=[
 const $=id=>document.getElementById(id);
 const canvas=$('raceCanvas'),ctx=canvas.getContext('2d');
 const horseCountSelect=$('horseCountSelect'),horseScaleRange=$('horseScaleRange'),startBtn=$('startBtn'),leaderboardList=$('leaderboardList'),gameStatusText=$('gameStatusText'),raceTimer=$('raceTimer'),liveStatusBadge=$('liveStatusBadge'),resultModal=$('resultModal'),podiumList=$('podiumList');
+const countdownOverlay=$('countdownOverlay'),countdownNumber=$('countdownNumber'),countdownSub=$('countdownSub');
 
 let soundEnabled=true,audioCtx=null;
 function initAudio(){if(!audioCtx){const A=window.AudioContext||window.webkitAudioContext;if(A)audioCtx=new A()}if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume()}
 function playHoof(){if(!soundEnabled||!audioCtx)return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.setValueAtTime(80+Math.random()*40,t);o.frequency.exponentialRampToValueAtTime(20,t+.05);g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.001,t+.05);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(t+.05)}catch(e){}}
-function playBeep(freq=440,dur=0.08){if(!soundEnabled||!audioCtx)return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+dur)}catch(e){}}
+function playBeep(freq=440,dur=0.08){if(!soundEnabled||!audioCtx)return;try{const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(.14,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+dur)}catch(e){}}
 function playFanfare(){if(!soundEnabled||!audioCtx)return;try{[523.25,659.25,783.99,1046.5].forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),s=audioCtx.currentTime+i*.12;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.1,s);g.gain.exponentialRampToValueAtTime(.001,s+.35);o.connect(g);g.connect(audioCtx.destination);o.start(s);o.stop(s+.35)})}catch(e){}}
 $('soundToggleBtn').addEventListener('click',()=>{soundEnabled=!soundEnabled;$('soundIcon').textContent=soundEnabled?'🔊':'🔇';$('soundText').textContent=soundEnabled?'사운드 ON':'사운드 OFF';if(soundEnabled)initAudio()});
 
@@ -128,7 +171,6 @@ function leg(c,hx,hy,p,front,col,w){
  c.lineWidth=w*.5;c.strokeStyle="#161010";c.beginPath();c.moveTo(fx,fy);c.lineTo(hfx,hfy);c.stroke();
 }
 
-// 결정론적(Deterministic) 랜덤 및 경로 계산
 function raceRandom(seed,horseId,slot){
  let x=(Number(seed)^Math.imul(horseId,0x9e3779b1)^Math.imul(slot+1,0x85ebca6b))>>>0;
  x=Math.imul(x^(x>>>16),0x7feb352d);x=Math.imul(x^(x>>>15),0x846ca68b);x^=x>>>16;
@@ -151,7 +193,6 @@ function raceProgress(horseId,t,seed=raceSeed){
  return {distance:distance/target,status:raceStatusAt(horseId,t,seed),finishAt};
 }
 
-// 각 말의 완주 시간 및 전체 결과 사전 계산
 function calcHorseFinishTime(seed,horseId){
  const target=600,step=.2,scale=60;let distance=0;
  for(let i=0;i<1500;i++){
@@ -345,7 +386,11 @@ function showResult(){
 }
 
 function startRace(sharedSeed,sharedStartAt,sharedResults){
- if(isRacing)return;initAudio();reqWake();
+ if(isRacing)return;
+ // 멀티플레이 중일 때 로컬 직접 호출 차단 (오직 공유 신호로만 시작)
+ if(window.raceApi?.isMultiplayer?.() && !sharedStartAt) return;
+ 
+ initAudio();reqWake();
  raceSeed=Number.isFinite(Number(sharedSeed))?Number(sharedSeed):Math.floor(Math.random()*0x7fffffff);
  const currentSynced=window.getSyncedTime();
  raceStartedAt=Number(sharedStartAt)||(currentSynced+3500);
@@ -361,16 +406,25 @@ function startRace(sharedSeed,sharedStartAt,sharedResults){
   h.phaseStart=raceRandom(raceSeed,h.id,999)*Math.PI*2;h.phase=h.phaseStart;
  });
  
- startBtn.classList.add('hidden');resultModal.classList.add('hidden');resultModal.classList.remove('flex');
+ startBtn.classList.add('hidden');
+ resultModal.classList.add('hidden');resultModal.classList.remove('flex');
+ 
+ // 카운트다운 오버레이 초기화
+ countdownOverlay.classList.remove('hidden');
+ countdownNumber.className="text-7xl sm:text-9xl font-black font-jua text-amber-400 drop-shadow-[0_0_35px_rgba(245,158,11,0.95)] count-pop";
+ countdownNumber.textContent="3";
+ countdownSub.textContent="모든 참가자 화면에서 동시 카운트다운!";
+ 
  liveStatusBadge.textContent="카운트다운";
  liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
- gameStatusText.textContent="출발 준비 중입니다. 카운트다운 후 동시에 출발합니다!";
+ gameStatusText.textContent="🚨 3초 카운트다운 후 모든 참가자가 동시에 출발합니다!";
 }
 
 function resetGame(){
  relWake();isRacing=false;isFinished=false;elapsedTime=0;finishOrder=[];particles=[];beepFlags={};
+ countdownOverlay.classList.add('hidden');
  raceTimer.textContent="⏱️ 00.00초";liveStatusBadge.textContent="대기 중";liveStatusBadge.className="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full";
- gameStatusText.textContent="🚩 [경주 스타트] 버튼을 누르면 경주가 시작됩니다!";
+ gameStatusText.textContent="🚩 [말 선택] 후 [경주 시작]을 누르면 경주가 시작됩니다!";
  startBtn.classList.toggle('hidden',Boolean(window.raceApi?.isMultiplayer?.()));
  resultModal.classList.add('hidden');resultModal.classList.remove('flex');
  resizeCanvas();updateLeaderboard();
@@ -386,18 +440,36 @@ function animate(now){
   if(untilStart>0){
    elapsedTime=0;
    raceTimer.textContent=`출발까지 ${untilStart.toFixed(1)}초`;
-   gameStatusText.textContent=`🚨 출발 ${Math.ceil(untilStart)}초 전 — 참가자 모두 동시에 출발합니다!`;
-   liveStatusBadge.textContent=`카운트다운 ${Math.ceil(untilStart)}`;
    const sCeil=Math.ceil(untilStart);
+   gameStatusText.textContent=`🚨 출발 ${sCeil}초 전 — 모든 화면에서 동시에 출발합니다!`;
+   liveStatusBadge.textContent=`카운트 ${sCeil}`;
+   
+   // 🚨 대형 중앙 3초 카운트다운 표시
+   countdownOverlay.classList.remove('hidden');
+   if(countdownNumber.textContent!==String(sCeil)){
+    countdownNumber.textContent=String(sCeil);
+    countdownNumber.classList.remove('count-pop');
+    void countdownNumber.offsetWidth; // CSS 리플로우 트리거
+    countdownNumber.classList.add('count-pop');
+   }
+   
    if([3,2,1].includes(sCeil)&&!beepFlags[sCeil]){
-    beepFlags[sCeil]=true;playBeep(440,0.09);
+    beepFlags[sCeil]=true;playBeep(440,0.1);
    }
   }else{
    elapsedTime=Math.max(0,(currentSynced-raceStartedAt)/1000);
    raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;
+   
    if(!raceLaunched){
-    raceLaunched=true;beepFlags[0]=true;playBeep(880,0.25);
-    gameStatusText.textContent="🔥 경주가 시작됐습니다!";
+    raceLaunched=true;beepFlags[0]=true;playBeep(880,0.28);
+    
+    // START! 표시 후 부드럽게 퇴장
+    countdownNumber.textContent="START!";
+    countdownNumber.className="text-6xl sm:text-8xl font-black font-jua text-emerald-400 drop-shadow-[0_0_35px_rgba(52,211,153,0.95)] count-pop";
+    countdownSub.textContent="🔥 경주가 시작되었습니다!";
+    setTimeout(()=>{ countdownOverlay.classList.add('hidden'); }, 700);
+    
+    gameStatusText.textContent="🔥 모든 참가자의 경주가 시작됐습니다!";
     liveStatusBadge.textContent="경주 진행 중";
     liveStatusBadge.className="text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold animate-pulse";
    }
@@ -406,7 +478,8 @@ function animate(now){
    const allDoneByTime = maxFinishTime > 0 && elapsedTime >= (maxFinishTime + 0.1);
    if((finishOrder.length===horses.length || allDoneByTime) && !isFinished){
     isFinished=true;isRacing=false;relWake();
-    // 만약 시간차로 아직 finishOrder에 안 들어간 말이 있다면 사전 계산된 시간으로 완주 처리
+    countdownOverlay.classList.add('hidden');
+    
     if(finishOrder.length<horses.length&&precomputedResults){
      precomputedResults.forEach(pr=>{
       const h=horses.find(x=>x.id===pr.horse);
@@ -419,7 +492,7 @@ function animate(now){
     }
     liveStatusBadge.textContent="경기 종료";
     liveStatusBadge.className="text-[9px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold";
-    gameStatusText.textContent=`🏆 경주 종료! 우승마: ${finishOrder[0]?.col?.name || '1번 말'}`;
+    gameStatusText.textContent=`🏆 경주 종료! 1위: ${finishOrder[0]?.col?.name || '1번 말'}`;
     playFanfare();
     window.dispatchEvent(new CustomEvent('horse-race-finished',{
      detail:finishOrder.map(h=>({id:h.id,time:h.finishTime}))
@@ -440,15 +513,14 @@ window.raceApi={
  isMultiplayer:()=>Boolean(window.__horseRoomActive),
  completeOfficially:results=>{
   if(!Array.isArray(results)||!results.length)return;
-  // 이미 진행 중인 경주가 있으면 자연스러운 결승선 통과를 방해하지 않고 결과만 저장
   if(!isFinished && isRacing) return;
   finishOrder=results.map((r,i)=>horses.find(h=>h.id===Number(r.horse))).filter(Boolean);
   finishOrder.sort((a,b)=>results.findIndex(r=>Number(r.horse)===a.id)-results.findIndex(r=>Number(r.horse)===b.id));
   finishOrder.forEach((h,i)=>{h.rank=i+1;h.finishTime=Number(results[i]?.time)||h.finishTime;h.x=finishLineX;h.finished=true;h.status='normal'});
-  isRacing=false;isFinished=true;raceLaunched=true;relWake();
+  isRacing=false;isFinished=true;raceLaunched=true;relWake();countdownOverlay.classList.add('hidden');
   raceTimer.textContent=`⏱️ ${Math.max(...finishOrder.map(h=>h.finishTime)).toFixed(2)}초`;
   liveStatusBadge.textContent='경기 종료';
-  gameStatusText.textContent='참가자 전체 경기가 종료됐습니다.';
+  gameStatusText.textContent='모든 참가자의 경기가 종료됐습니다.';
   if(!officiallyFinished){officiallyFinished=true;playFanfare()}
   updateLeaderboard();
  },
@@ -456,8 +528,14 @@ window.raceApi={
  setHorseCount:n=>{numHorses=n;horseCountSelect.value=String(n);createHorses();resetGame()}
 };
 
-startBtn.addEventListener('click',()=>startRace());
-$('resetBtn').addEventListener('click',resetGame);
+startBtn.addEventListener('click',()=>{
+ if(window.raceApi?.isMultiplayer?.()) return; // 멀티 상태에서 클릭 방지
+ startRace();
+});
+$('resetBtn').addEventListener('click',()=>{
+ if(window.raceApi?.isMultiplayer?.()) return; // 멀티 상태에서는 헤더 리셋 비활성화
+ resetGame();
+});
 $('modalRestartBtn').addEventListener('click',()=>{
  if(window.raceApi?.isMultiplayer?.()){
   window.dispatchEvent(new CustomEvent('horse-rematch-requested'));
@@ -465,7 +543,10 @@ $('modalRestartBtn').addEventListener('click',()=>{
   resetGame();
  }
 });
-horseCountSelect.addEventListener('change',e=>{numHorses=parseInt(e.target.value,10);createHorses();resetGame()});
+horseCountSelect.addEventListener('change',e=>{
+ if(window.raceApi?.isMultiplayer?.()) return;
+ numHorses=parseInt(e.target.value,10);createHorses();resetGame();
+});
 horseScaleRange.addEventListener('input',e=>{const v=parseInt(e.target.value,10);horseScale=v/100;$('horseScaleVal').textContent=v+'%'});
 window.addEventListener('load',()=>{createHorses();resizeCanvas();updateLeaderboard();requestAnimationFrame(animate)});
 </script>
@@ -480,13 +561,9 @@ const firebaseConfig=typeof __firebase_config!=="undefined"?JSON.parse(__firebas
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const roomRef=id=>doc(db,'artifacts',appId,'public','data','horse_rooms',id);
 
-const msg=$('mpMessage'),roomBox=$('mpRoom');let uid='',room='',roomData=null,unsubscribe=null,isHost=false,lastPhase='',playerColors=new Map();
+const msg=$('mpMessage'),roomBox=$('mpRoom'),setupBox=$('mpLobbySetup');let uid='',room='',roomData=null,unsubscribe=null,isHost=false,lastPhase='',playerColors=new Map();
 window.__horseRoomActive=false;
 window.horsePickState=()=>({users:roomData?.users||{},colors:Object.fromEntries(playerColors)});
-
-const buttonStyle='padding:7px 10px;border:1px solid #64748b;border-radius:8px;background:#1e293b;color:#f8fafc;font-weight:bold;cursor:pointer';
-document.querySelectorAll('#multiPanel button').forEach(b=>b.style.cssText=buttonStyle);
-$('mpHostStartBtn').style.cssText='padding:7px 12px;border:1px solid #f59e0b;border-radius:8px;background:#d97706;color:#000;font-weight:900;cursor:pointer';
 
 // 정밀 서버 시간 오프셋 동기화 (RTT 편도 지연 보정)
 async function syncServerTime(){
@@ -506,7 +583,7 @@ async function syncServerTime(){
   }
   deleteDoc(pingDoc).catch(()=>{});
  }catch(e){
-  console.warn('[TimeSync] Failed, using local time:',e);
+  console.warn('[TimeSync] Fallback:',e);
  }
 }
 
@@ -573,8 +650,11 @@ async function connect(codeValue, create=false){
 
  $('mpRoomCode').textContent = room;
  $('mpRoomNameDisplay').textContent = data.name || '경마방';
- $('mpHorseSetting').hidden = !isHost;
- $('mpHostStartBtn').hidden = !isHost;
+ 
+ // 🚀 [요구사항 3] 방 입장 후 상단 텍스트 박스/버튼 숨김 처리 (모바일 뷰 최적화)
+ setupBox.style.display = 'none';
+ $('singleHorseSetting').classList.add('hidden'); // 헤더 말수 선택 숨김
+ $('startBtn').classList.add('hidden'); // 싱글 스타트 버튼 숨김
  roomBox.hidden = false;
 
  unsubscribe?.();
@@ -582,9 +662,7 @@ async function connect(codeValue, create=false){
   roomData = s.exists() ? s.data() : null;
   if(!roomData){
    msg.textContent = '방이 종료되었습니다.';
-   roomBox.hidden = true;
-   window.__horseRoomActive = false;
-   window.raceApi?.reset();
+   leaveRoomLocal();
    return;
   }
   isHost = roomData.host === uid;
@@ -596,7 +674,19 @@ async function connect(codeValue, create=false){
  msg.textContent = '';
 }
 
-// 방장 또는 전원 준비 시 3.5초 카운트다운 동시 시작 트리거
+function leaveRoomLocal(){
+ unsubscribe?.();
+ unsubscribe = null;
+ room = ''; roomData = null;
+ window.__horseRoomActive = false;
+ roomBox.hidden = true;
+ setupBox.style.display = 'flex'; // 상단 텍스트박스 복구
+ $('singleHorseSetting').classList.remove('hidden');
+ $('startBtn').classList.remove('hidden');
+ window.raceApi?.reset();
+}
+
+// 🚀 [요구사항 2] 방장 전용 경주 시작 트리거 (방장만 호출 가능!)
 async function triggerRaceStart(){
  if(!isHost || !room || !roomData || roomData.phase !== 'lobby') return;
  const users = roomData.users || {};
@@ -622,6 +712,31 @@ async function triggerRaceStart(){
  }
 }
 
+// 🚀 [요구사항 2] 방장 전용: 새 경기 (말 선택부터 다시 시작)
+async function resetRoomToLobby(){
+ if(!isHost || !room || !roomData) return;
+ try{
+  const users = roomData.users || {};
+  const updates = {
+   phase: 'lobby',
+   startedAt: null,
+   raceSeed: null,
+   precomputedResults: null,
+   results: null,
+   finishedAt: null
+  };
+  // 모든 참가자의 말 선택(pick/skip) 초기화 -> 말 선택부터 다시 시작!
+  for(const id of Object.keys(users)){
+   updates[`users.${id}.pick`] = null;
+   updates[`users.${id}.skip`] = false;
+  }
+  await updateDoc(roomRef(room), updates);
+ }catch(e){
+  console.error('말 선택 재시작 리셋 실패:', e);
+ }
+}
+
+// 모든 참가자 선택 완료 시 자동 출발 (오직 방장 브라우저만 트리거)
 function checkAndAutoStart(){
  if(!isHost || !roomData || roomData.phase !== 'lobby') return;
  const users = roomData.users || {}, players = Object.values(users);
@@ -639,23 +754,26 @@ function render(){
  [...players].sort(([a],[b])=>a.localeCompare(b)).forEach(([id],i)=>playerColors.set(id,`hsl(${Math.round((i*137.508)%360)} 78% 48%)`));
  
  $('mpCount').textContent = players.length;
- $('mpPhase').textContent = ({lobby:'말 선택 중', countdown:'출발 카운트다운', racing:'경기 진행 중', finished:'경기 종료'})[roomData.phase] || '대기 중';
+ $('mpPhase').textContent = ({lobby:'말 선택 중', countdown:'3초 카운트다운', racing:'경기 진행 중', finished:'경기 종료'})[roomData.phase] || '대기 중';
  $('mpHorseCount').value = roomData.horseCount || 5;
- $('mpHorseSetting').hidden = !isHost;
+ 
+ // 컨트롤 노출 제어 (오직 방장에게만 노출!)
+ $('mpHorseSetting').hidden = !isHost || roomData.phase !== 'lobby';
  $('mpHostStartBtn').hidden = !isHost || roomData.phase !== 'lobby';
+ $('mpHostResetBtn').hidden = !isHost || roomData.phase !== 'finished';
  
  if(window.raceApi && window.raceApi.getHorseCount() !== (Number(roomData.horseCount) || 5)){
   window.raceApi.setHorseCount(Number(roomData.horseCount) || 5);
  }
  
- $('startBtn').classList.add('hidden'); // 멀티플레이에서는 항상 숨김
+ $('startBtn').classList.add('hidden'); // 멀티 중에는 항상 숨김
  
- // 1. 카운트다운 시작 수신 -> 모든 참가자 동시 출발 스케줄링
+ // 1. 카운트다운 신호 수신 -> 모든 참가자 동시 카운트다운 & 동시 출발!
  if(roomData.phase === 'countdown' && lastPhase !== 'countdown'){
   window.raceApi?.start(roomData.raceSeed, roomData.startedAt, roomData.precomputedResults);
  }
  
- // 2. 로비 복귀 수신 (다음 경기)
+ // 2. 🚀 [요구사항 2] 로비 복귀 수신 (말 선택부터 다시 시작)
  if(roomData.phase === 'lobby' && lastPhase !== 'lobby'){
   window.raceApi?.reset();
   $('resultModal').classList.add('hidden');
@@ -670,24 +788,36 @@ function render(){
  
  const readyCount = players.filter(([,u]) => u.pick || u.skip).length;
  $('mpPlayers').innerHTML = players.map(([id,u])=>`
-  <span style="display:inline-flex;align-items:center;gap:5px;background:#1e293b;border:1px solid ${playerColors.get(id)};border-radius:8px;padding:5px 8px;margin:2px">
-   <span style="width:9px;height:9px;border-radius:50%;background:${playerColors.get(id)}"></span>
-   ${esc(u.name)}${id===roomData.host?' 👑':''} · ${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'선택 대기':'미선택'}
+  <span class="inline-flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] border" style="border-color:${playerColors.get(id)}">
+   <span class="w-1.5 h-1.5 rounded-full" style="background:${playerColors.get(id)}"></span>
+   <span class="font-bold text-slate-200 truncate max-w-[70px]">${esc(u.name)}</span>${id===roomData.host?'<span class="text-amber-400">👑</span>':''}
+   <span class="text-slate-400">·</span>
+   <span class="${u.pick?'text-amber-400 font-extrabold':u.skip?'text-slate-400':'text-cyan-300 font-semibold'}">${u.skip?'건너뜀':u.pick?u.pick+'번 말':roomData.phase==='lobby'?'선택 대기':'미선택'}</span>
   </span>
  `).join('');
  
  if(roomData.phase === 'lobby'){
   $('mpSkip').disabled = false;
-  $('mpPickHint').textContent = `트랙에서 원하는 말을 누르세요. (선택 완료: ${readyCount}/${players.length}명)`;
+  $('mpPickHint').textContent = `트랙에서 원하는 말을 터치해 고르세요! (선택 완료: ${readyCount}/${players.length}명)`;
+  $('mpPickHint').className = 'text-amber-300 font-bold truncate flex-1 min-w-[140px]';
   $('mpPickRow').style.opacity = '1';
   $('mpResults').textContent = '';
+ } else if(roomData.phase === 'countdown'){
+  $('mpSkip').disabled = true;
+  $('mpPickHint').textContent = '🚨 3초 카운트다운 진행 중! 곧 출발합니다!';
+  $('mpPickHint').className = 'text-emerald-400 font-extrabold animate-pulse truncate flex-1 min-w-[140px]';
+  $('mpPickRow').style.opacity = '.9';
+ } else if(roomData.phase === 'finished'){
+  $('mpSkip').disabled = true;
+  $('mpPickHint').textContent = isHost ? '경기가 종료되었습니다. 아래 버튼을 눌러 새 경기를 시작하세요!' : '경기가 종료되었습니다. 방장의 다음 경기 준비를 기다리세요.';
+  $('mpPickHint').className = 'text-amber-400 font-bold truncate flex-1 min-w-[140px]';
  } else {
   $('mpSkip').disabled = true;
-  $('mpPickHint').textContent = '선택이 마감되었습니다.';
-  $('mpPickRow').style.opacity = '.6';
+  $('mpPickHint').textContent = '🔥 경주가 진행 중입니다!';
+  $('mpPickHint').className = 'text-cyan-400 font-bold truncate flex-1 min-w-[140px]';
  }
  
- // 결과 화면 동기화
+ // 🚀 결과 화면 동기화
  if(roomData.phase === 'finished' && roomData.results){
   const order = roomData.results;
   const byHorse = new Map(order.map((r,i) => [Number(r.horse), i + 1]));
@@ -701,18 +831,18 @@ function render(){
    .sort((a,b) => a.horseRank - b.horseRank);
    
   const userRows = ranked.length ? ranked.map((u,i) => `
-   <div class="rounded-lg ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-200 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'} border p-2 flex items-center justify-between">
-    <div class="flex items-center gap-2">
+   <div class="rounded-lg ${i===0?'bg-amber-500/15 border-amber-500/50 text-amber-200 font-extrabold':'bg-slate-950/70 border-slate-800 text-slate-200'} border p-1.5 flex items-center justify-between text-xs">
+    <div class="flex items-center gap-1.5 truncate">
      <span>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'🎗️'}</span>
-     <span>${i+1}위 <b>${esc(u.name)}</b></span>
+     <span>${i+1}위 <b class="text-white">${esc(u.name)}</b></span>
     </div>
-    <span class="text-amber-400 font-bold">${u.pick}번 말 (${u.horseRank}위 도착)</span>
+    <span class="text-amber-400 font-bold whitespace-nowrap ml-1">${u.pick}번 말 (${u.horseRank}위 도착)</span>
    </div>
-  `).join('') : '<div class="text-slate-400 text-center py-2">말을 선택한 참가자가 없습니다.</div>';
+  `).join('') : '<div class="text-slate-400 text-center py-2 text-xs">말을 선택한 참가자가 없습니다.</div>';
   
   const horseRows = order.map((r,i) => {
    const col = COLORS[(r.horse - 1) % COLORS.length];
-   return `<div class="flex items-center justify-between text-xs py-1 border-b border-slate-800/60">
+   return `<div class="flex items-center justify-between text-[11px] py-1 border-b border-slate-800/60">
     <div class="flex items-center gap-1.5">
      <span class="w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-slate-950" style="background:${col.hex}">${r.horse}</span>
      <span class="text-slate-200">${col.name}</span>
@@ -722,13 +852,13 @@ function render(){
   }).join('');
   
   const markup = `
-   <div class="mb-3">
-    <div class="text-center text-amber-300 font-bold mb-1.5 text-xs">👑 참가자 최종 순위</div>
+   <div class="mb-2.5">
+    <div class="text-center text-amber-300 font-bold mb-1 text-xs">👑 참가자 최종 순위</div>
     <div class="space-y-1">${userRows}</div>
    </div>
    <div>
     <div class="text-center text-slate-400 font-bold mb-1 text-[11px]">🏇 말 도착 기록</div>
-    <div class="max-h-36 overflow-y-auto no-scrollbar space-y-0.5">${horseRows}</div>
+    <div class="max-h-32 overflow-y-auto no-scrollbar space-y-0.5">${horseRows}</div>
    </div>
   `;
   
@@ -738,11 +868,11 @@ function render(){
   if(title) title.textContent = '참가자 및 말 최종 순위';
   
   const restartBtn = $('modalRestartBtn');
-  restartBtn.textContent = isHost ? '🔄 다음 경기 준비 (방 리셋)' : '⏳ 방장의 다음 경기 준비를 기다리는 중...';
+  restartBtn.textContent = isHost ? '🔄 다음 경기 (말 선택 시작)' : '⏳ 방장의 다음 경기 준비를 기다리는 중...';
   restartBtn.disabled = !isHost;
   restartBtn.className = isHost
-   ? "w-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black py-1.5 rounded-xl font-jua text-xs border border-amber-300 cursor-pointer"
-   : "w-full bg-slate-800 text-slate-400 font-black py-1.5 rounded-xl font-jua text-xs border border-slate-700 cursor-not-allowed";
+   ? "w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-2 rounded-xl font-jua text-xs sm:text-sm border border-amber-300 cursor-pointer shadow-lg"
+   : "w-full bg-slate-800 text-slate-400 font-bold py-2 rounded-xl font-jua text-xs border border-slate-700 cursor-not-allowed";
   
   $('resultModal').classList.remove('hidden');
   $('resultModal').classList.add('flex');
@@ -755,6 +885,7 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 $('mpCreate').onclick=async()=>{try{const c=code();await connect(c,true)}catch(e){msg.textContent=e.message}};
 $('mpJoin').onclick=async()=>{try{await connect($('mpCode').value.trim().toUpperCase(),false)}catch(e){msg.textContent=e.message}};
 $('mpHostStartBtn').onclick=async()=>{try{await triggerRaceStart()}catch(e){msg.textContent=e.message}};
+$('mpHostResetBtn').onclick=async()=>{try{await resetRoomToLobby()}catch(e){msg.textContent=e.message}};
 
 async function chooseHorse(horse){
  if(!uid||!room||roomData?.phase!=='lobby')return;
@@ -803,39 +934,17 @@ $('mpLeave').onclick=async()=>{
   if(isHost)await deleteDoc(roomRef(room));
   else await updateDoc(roomRef(room),{['users.'+uid]:deleteField()});
  }
- unsubscribe?.();
- unsubscribe=null;
- room='';roomData=null;
- window.__horseRoomActive=false;
- roomBox.hidden=true;
+ leaveRoomLocal();
  msg.textContent='방에서 나왔습니다.';
- window.raceApi?.reset();
 };
 
-// 방장 전용: 다음 경기 준비 (방 리셋)
+// 방장 전용: 모달에서 다음 경기 준비 (말 선택부터 재시작)
 window.addEventListener('horse-rematch-requested',async()=>{
  if(!isHost||!room||!roomData)return;
- try{
-  const users=roomData.users||{};
-  const updates={
-   phase:'lobby',
-   startedAt:null,
-   raceSeed:null,
-   precomputedResults:null,
-   results:null,
-   finishedAt:null
-  };
-  for(const id of Object.keys(users)){
-   updates[`users.${id}.pick`]=null;
-   updates[`users.${id}.skip`]=false;
-  }
-  await updateDoc(roomRef(room),updates);
- }catch(e){
-  console.error('방 리셋 실패:',e);
- }
+ await resetRoomToLobby();
 });
 
-// 경기 완주 시 공식 결과 동기화
+// 경기 완주 시 공식 결과 동기화 (오직 방장만 업데이트)
 window.addEventListener('horse-race-finished',async e=>{
  if(isHost&&room&&roomData?.phase==='countdown'){
   const results=e.detail.map(x=>({horse:x.id,time:x.time}));
