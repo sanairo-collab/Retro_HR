@@ -155,15 +155,15 @@ function relWake(){if(wakeLock){wakeLock.release().then(()=>wakeLock=null).catch
 window.__serverTimeOffset = 0;
 window.getSyncedTime = () => Date.now() + (window.__serverTimeOffset || 0);
 
-// 🚀 [속도 최적화] 경주 파라미터: 속도 스케일을 118로 상향하여 완주 시간 약 11~13초로 박진감 있게 질주!
+// 🎯 [원상 복구] 사용자의 요청에 따라 전체 게임 길이(완주 시간 약 20~24초)는 원래대로 복원!
 const RACE_TARGET = 600;
 const RACE_STEP = 0.2;
-const RACE_SCALE = 118; // 기존 60에서 약 2배로 상향!
+const RACE_SCALE = 60; // 원래 속도 복원 (적당한 경기 플레이 타임 유지)
 
 let numHorses=5,horseScale=.85,horses=[],particles=[],isRacing=false,isFinished=false,raceStartedAt=0,raceSeed=1,elapsedTime=0,finishOrder=[],raceLaunched=false,officiallyFinished=false;
 let precomputedResults=null,maxFinishTime=0,beepFlags={};
 let PAD_L=125,PAD_R=75;let finishLineX=0;
-let raceCache={}; // 60fps O(1) 초고속 프레임 렌더링용 궤적 캐시
+let raceCache={};
 
 function dust(x,y,color='#64748b',n=1){
  if(particles.length>18)return;
@@ -171,19 +171,20 @@ function dust(x,y,color='#64748b',n=1){
 }
 function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.a-=dt*1.8;p.r+=dt*1.8;if(p.a<=0){particles.splice(i,1);continue}ctx.save();ctx.globalAlpha=p.a;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.283);ctx.fill();ctx.restore()}}
 
+// 🐎 [말의 움직임 개선] 폰 화면에서도 다리가 쭉쭉 뻗고 힘차게 구르는 역동적인 다리 관절 모션
 function leg(c,hx,hy,p,front,col,w){
  const sw=Math.sin(p),lift=Math.max(0,Math.cos(p));
- const a1=sw*(front?.8:.7);
- const a2=front?a1-.15-lift*1.25:a1+.35-lift*.9;
- const L1=front?11:8,L2=front?11:9.5;
+ const a1=sw*(front?.95:.85);
+ const a2=front?a1-.2-lift*1.35:a1+.4-lift*1.0;
+ const L1=front?11.5:8.5,L2=front?11.5:10;
  const kx=hx+Math.sin(a1)*L1,ky=hy+Math.cos(a1)*L1;
- const a3=front?a2+.25*lift:a2-.45;
+ const a3=front?a2+.3*lift:a2-.5;
  const fx=kx+Math.sin(a2)*L2,fy=ky+Math.cos(a2)*L2;
- const hfx=fx+Math.sin(a3)*3.5,hfy=fy+Math.cos(a3)*3.5;
+ const hfx=fx+Math.sin(a3)*3.8,hfy=fy+Math.cos(a3)*3.8;
  c.lineCap='round';c.lineJoin='round';c.strokeStyle=col;
  c.lineWidth=w;c.beginPath();c.moveTo(hx,hy);c.lineTo(kx,ky);c.stroke();
- c.lineWidth=w*.62;c.beginPath();c.moveTo(kx,ky);c.lineTo(fx,fy);c.stroke();
- c.lineWidth=w*.5;c.strokeStyle="#161010";c.beginPath();c.moveTo(fx,fy);c.lineTo(hfx,hfy);c.stroke();
+ c.lineWidth=w*.65;c.beginPath();c.moveTo(kx,ky);c.lineTo(fx,fy);c.stroke();
+ c.lineWidth=w*.55;c.strokeStyle="#161010";c.beginPath();c.moveTo(fx,fy);c.lineTo(hfx,hfy);c.stroke();
 }
 
 function raceRandom(seed,horseId,slot){
@@ -197,13 +198,13 @@ function raceStatusAt(horseId,t,seed=raceSeed){
  return status;
 }
 
-// 궤적 사전 계산 및 캐싱 (O(1) 조회로 모바일 CPU 부하 99% 감소 및 60fps 보장)
+// 궤적 사전 계산 및 캐싱
 function buildRaceCache(seed, count){
  raceCache={};
  for(let id=1;id<=count;id++){
   const samples=[{t:0,dist:0,status:'normal'}];
   let dist=0,finishAt=null;
-  for(let i=0;i<300&&dist<RACE_TARGET;i++){
+  for(let i=0;i<600&&dist<RACE_TARGET;i++){
    const from=i*RACE_STEP,dur=RACE_STEP,mid=from+dur/2;
    const st=raceStatusAt(id,mid,seed);
    const vel=(0.35+raceRandom(seed,id,i)*0.2)*RACE_SCALE*(st==='injured'?0:st==='tired'?.4:1);
@@ -216,7 +217,7 @@ function buildRaceCache(seed, count){
    dist+=vel*dur;
    samples.push({t:(i+1)*RACE_STEP,dist:dist/RACE_TARGET,status:st});
   }
-  raceCache[id]={samples,finishAt:finishAt||20.0};
+  raceCache[id]={samples,finishAt:finishAt||30.0};
  }
 }
 
@@ -252,7 +253,7 @@ class Horse{
  constructor(id,col){this.id=id;this.col=col;this.reset(0)}
  reset(y){
   this.x=PAD_L;this.y=y;this.speed=0;
-  this.baseSpeed=0.75;
+  this.baseSpeed=0.42;
   this.phase=Math.random()*6.28;this.phaseStart=this.phase;this.status='normal';this.timer=0;this.rank=0;this.finished=false;this.finishTime=0;this.chg=Math.random()*40
  }
  update(dt,tw){
@@ -262,9 +263,10 @@ class Horse{
   
   if(!this.finished){
    this.x=PAD_L+progress.distance*(finishLineX-PAD_L);
-   this.speed=(.35+raceRandom(raceSeed,this.id,Math.floor(elapsedTime/RACE_STEP))*.2)*(tw/650)*(this.status==='injured'?0:this.status==='tired'?.4:1);
-   // 🚀 보폭 템포 72로 증가하여 박진감 넘치는 질주 연출!
-   this.phase=this.phaseStart+elapsedTime*72;
+   this.speed=(.35+raceRandom(raceSeed,this.id,Math.floor(elapsedTime/RACE_STEP))*.2)*(tw/750)*(this.status==='injured'?0:this.status==='tired'?.4:1);
+   
+   // 🐎 [말의 움직임 개선] 다리 회전 템포를 85로 올려 다리를 파닥파닥 빠르게 차며 달리는 경쾌한 모션 구현!
+   this.phase=this.phaseStart+elapsedTime*85;
    
    if(progress.finishAt!==null&&elapsedTime>=progress.finishAt){
     this.finished=true;this.x=finishLineX;this.finishTime=progress.finishAt;
@@ -279,12 +281,11 @@ class Horse{
  }
  draw(c){
   const k=this.col,p=this.phase,moving=this.speed>0&&this.status!=='injured'&&!this.finished;
-  const bob=moving?Math.sin(p*2)*.45:0;
+  // 🐎 상하 들썩임(bob)을 생동감 있게 강화
+  const bob=moving?Math.sin(p*2)*.7:0;
   
   c.save();c.translate(this.x,this.y);
-  // 모바일 화면에서는 말 크기를 살짝 슬림하게 하여 트랙 공간과 시야 확보
-  const actualScale = (canvas.width < 500) ? horseScale * 0.78 : horseScale;
-  c.scale(actualScale,actualScale);
+  c.scale(horseScale,horseScale);
   
   if(this.status==='injured'){
    c.rotate(.05);
@@ -293,7 +294,8 @@ class Horse{
    c.fillStyle="#3b82f6";c.font="bold 28px sans-serif";c.textAlign="center";c.fillText("💧",0,-46+bob);
   }
   
-  if(moving)c.rotate(Math.sin(p)*.014);
+  // 🐎 질주 시 리듬감 있는 기울기 모션
+  if(moving)c.rotate(Math.sin(p)*.02);
   c.fillStyle="rgba(255,255,255,.1)";c.beginPath();c.ellipse(0,12,30,4,0,0,6.283);c.fill();
   
   const b=bob,far=k.dark;
@@ -301,7 +303,7 @@ class Horse{
   leg(c,15,-9+b,p-.9,true,far,4.6);
   
   c.strokeStyle=k.mane;c.lineCap='round';
-  for(let i=0;i<3;i++){c.lineWidth=3-i*.6;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-28,-23+i*1,-31+Math.sin(p+i)*1,-19+i*1,-34+Math.sin(p*1.5+i*.6)*1.5,-12+i*1.5);c.stroke()}
+  for(let i=0;i<3;i++){c.lineWidth=3-i*.6;c.beginPath();c.moveTo(-25,-22+b);c.bezierCurveTo(-28,-23+i*1,-31+Math.sin(p+i)*1.5,-19+i*1,-34+Math.sin(p*1.5+i*.6)*2,-12+i*1.5);c.stroke()}
   
   const g=c.createLinearGradient(0,-29,0,-4);g.addColorStop(0,k.coat);g.addColorStop(1,k.dark);
   c.fillStyle=g;c.beginPath();
@@ -328,7 +330,8 @@ class Horse{
   c.fillStyle="#0b0b0b";c.beginPath();c.ellipse(33,-39.5+b,1.4,1,.3,0,6.283);c.fill();
   c.fillStyle="#fff";c.fillRect(33.3,-40.2+b,.5,.5);
   
-  c.fillStyle=k.coat;c.beginPath();c.moveTo(27,-43+b);c.lineTo(27.5,-49+b);c.lineTo(31,-44.5+b);c.fill();
+  c.fillStyle=k.coat;c.beginPath();
+  c.moveTo(27,-43+b);c.lineTo(27.5,-49+b);c.lineTo(31,-44.5+b);c.fill();
   c.strokeStyle="#2a1a10";c.lineWidth=1;c.beginPath();c.moveTo(41,-33.5+b);c.lineTo(42.5,-30+b);c.moveTo(33,-39+b);c.lineTo(38,-32.5+b);c.stroke();
   
   c.strokeStyle=k.mane;c.lineWidth=2.2;
@@ -340,13 +343,13 @@ class Horse{
   leg(c,-19,-9+b,p+Math.PI+.3,false,k.coat,7);
   leg(c,17,-9+b,p-.2,true,k.coat,5.2);
   
-  const jb=b*.5;
+  const jb=b*.6;
   c.lineCap='round';c.lineJoin='round';
   c.strokeStyle="#f8fafc";c.lineWidth=3.5;c.beginPath();c.moveTo(-4,-29+jb);c.lineTo(5,-23+jb);c.lineTo(3,-15+jb);c.stroke();
   c.strokeStyle="#111";c.lineWidth=3;c.beginPath();c.moveTo(5,-23+jb);c.lineTo(4,-14+jb);c.stroke();
   
   c.fillStyle=k.hex; c.fillRect(-6,-38+jb, 14, 12); 
-  c.strokeStyle=k.hex;c.lineWidth=3;c.beginPath();c.moveTo(8,-36+jb);c.lineTo(17,-34+jb);c.lineTo(24,-34+jb+Math.sin(p*2)*.5);c.stroke(); 
+  c.strokeStyle=k.hex;c.lineWidth=3;c.beginPath();c.moveTo(8,-36+jb);c.lineTo(17,-34+jb);c.lineTo(24,-34+jb+Math.sin(p*2)*.6);c.stroke(); 
   c.fillStyle="#f1c9a5";c.beginPath();c.arc(12,-42+jb,2.8,0,6.283);c.fill();
   c.fillStyle=k.hex;c.beginPath();c.arc(11.5,-43+jb,3.5,3.14,6.283);c.fill();c.fillRect(8,-43.2+jb,7,1.4);
   c.fillStyle="#fbbf24";c.fillRect(13,-42+jb,2.8,1.5);
@@ -361,7 +364,6 @@ function createHorses(){horses=[];for(let i=0;i<numHorses;i++)horses.push(new Ho
 function resizeCanvas(){
  const c=canvas.parentElement;canvas.width=c.clientWidth;canvas.height=c.clientHeight;
  const isMobile = canvas.width < 550;
- // 🚀 모바일 뷰 여백 최적화: 모바일에서 트랙 실면적을 대폭 넓혀 속도감과 시야 확보
  const layoutScale = isMobile ? Math.max(0.55, canvas.width / 500) : Math.max(.62, Math.min(1, canvas.width / 750));
  PAD_L = isMobile ? Math.round(55 * layoutScale) : Math.round(125 * layoutScale);
  PAD_R = isMobile ? Math.round(35 * layoutScale) : Math.round(75 * layoutScale);
@@ -504,9 +506,9 @@ function animate(now){
    elapsedTime=Math.max(0,(currentSynced-raceStartedAt)/1000);
    raceTimer.textContent=`⏱️ ${elapsedTime.toFixed(2)}초`;
    
-   // 질주 발굽 소리 재생 (생생한 속도감 강화)
+   // 🐎 경쾌한 발굽 소리
    hoofTimer+=dt;
-   if(hoofTimer>0.14){
+   if(hoofTimer>0.15){
     hoofTimer=0;
     playHoof();
    }
